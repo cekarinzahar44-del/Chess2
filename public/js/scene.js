@@ -408,3 +408,4 @@ const Scene3D = (() => {
     get camera() { return camera; }
   };
 })();
+window.Scene3D = Scene3D;
