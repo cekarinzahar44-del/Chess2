@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<style>
+body{background:#000;color:#0f0;font-family:monospace;font-size:13px;padding:10px;}
+.ok{color:#0f0}.err{color:#f44}.warn{color:#fa0}
+</style>
+</head>
+<body>
+<div id="log"></div>
+
+<script>
+function log(msg, type='ok') {
+  const d = document.getElementById('log');
+  const line = document.createElement('div');
+  line.className = type;
+  line.textContent = (new Date().toISOString().substr(11,8)) + ' ' + msg;
+  d.appendChild(line);
+}
+
+log('Page loaded');
+log('navigator.userAgent: ' + navigator.userAgent.substr(0,60));
+</script>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"
+  onload="log('✅ three.js loaded')"
+  onerror="log('❌ three.js FAILED to load','err')">
+</script>
+
+<script>
+log('After three.js tag');
+log('typeof THREE = ' + typeof THREE);
+if(typeof THREE !== 'undefined') {
+  log('THREE.REVISION = ' + THREE.REVISION);
+} else {
+  log('THREE IS UNDEFINED!','err');
+}
+</script>
+
+<script src="/js/GLTFLoader.js"
+  onload="log('✅ GLTFLoader.js loaded')"
+  onerror="log('❌ GLTFLoader.js FAILED','err')">
+</script>
+<script>log('After GLTFLoader: typeof __initGLTFLoader = ' + typeof window.__initGLTFLoader);</script>
+
+<script src="/js/three-addons.js"
+  onload="log('✅ three-addons.js loaded')"
+  onerror="log('❌ three-addons.js FAILED','err')">
+</script>
+<script>log('After three-addons: typeof __initOrbitControls = ' + typeof window.__initOrbitControls);</script>
+
+<script src="/js/pieces.js"
+  onload="log('✅ pieces.js loaded')"
+  onerror="log('❌ pieces.js FAILED','err')">
+</script>
+<script>log('After pieces: typeof PieceFactory = ' + typeof PieceFactory);</script>
+
+<script src="/js/scene.js"
+  onload="log('✅ scene.js loaded')"
+  onerror="log('❌ scene.js FAILED','err')">
+</script>
+<script>log('After scene: typeof Scene3D = ' + typeof Scene3D);</script>
+
+<script src="/js/game.js"
+  onload="log('✅ game.js loaded')"
+  onerror="log('❌ game.js FAILED','err')">
+</script>
+<script>log('After game: typeof Game = ' + typeof Game);</script>
+
+<script src="/js/ui.js"
+  onload="log('✅ ui.js loaded')"
+  onerror="log('❌ ui.js FAILED','err')">
+</script>
+<script>log('After ui: typeof UI = ' + typeof UI);</script>
+
+<script>
+log('=== Init test ===');
+try {
+  if(typeof window.__initOrbitControls === 'function') {
+    window.__initOrbitControls();
+    log('✅ OrbitControls init OK');
+  } else { log('❌ __initOrbitControls missing','err'); }
+} catch(e) { log('❌ OrbitControls error: ' + e.message,'err'); }
+
+try {
+  if(typeof window.__initGLTFLoader === 'function') {
+    window.__initGLTFLoader();
+    log('✅ GLTFLoader init OK');
+  } else { log('❌ __initGLTFLoader missing','err'); }
+} catch(e) { log('❌ GLTFLoader error: ' + e.message,'err'); }
+
+log('=== ALL DONE ===');
+</script>
+</body>
+</html>
