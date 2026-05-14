@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="theme-color" content="#0a0a0f">
+  <title>3D Chess</title>
+  <script src="https://telegram.org/js/telegram-web-app.js"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700&family=Inter:wght@300;400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+
+<!-- Loading Screen -->
+<div id="loading-screen">
+  <div class="loading-inner">
+    <div class="chess-icon">♛</div>
+    <h1>3D Chess</h1>
+    <div class="loading-bar"><div class="loading-fill"></div></div>
+    <p class="loading-text">Загрузка движка...</p>
+  </div>
+</div>
+
+<!-- Main Menu -->
+<div id="main-menu" class="screen hidden">
+  <div class="menu-bg"></div>
+  <div class="menu-content">
+    <div class="logo">
+      <span class="logo-icon">♛</span>
+      <h1 class="logo-title">3D Chess</h1>
+      <p class="logo-sub">Telegram Mini App</p>
+    </div>
+
+    <div class="player-card" id="player-card">
+      <div class="player-avatar" id="player-avatar">?</div>
+      <div class="player-info">
+        <span class="player-name" id="player-name">Загрузка...</span>
+        <span class="player-elo" id="player-elo">ELO: —</span>
+      </div>
+    </div>
+
+    <div class="menu-buttons">
+      <button class="btn btn-primary" onclick="UI.showModeSelect()">
+        <span class="btn-icon">⚔️</span>
+        <span>Новая партия</span>
+      </button>
+      <button class="btn btn-secondary" onclick="UI.showLeaderboard()">
+        <span class="btn-icon">🏆</span>
+        <span>Таблица лидеров</span>
+      </button>
+      <button class="btn btn-secondary" onclick="UI.showStats()">
+        <span class="btn-icon">📊</span>
+        <span>Моя статистика</span>
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- Mode Select -->
+<div id="mode-select" class="screen hidden">
+  <div class="screen-header">
+    <button class="back-btn" onclick="UI.showMenu()">←</button>
+    <h2>Выбор режима</h2>
+  </div>
+  <div class="mode-cards">
+    <div class="mode-card" onclick="UI.selectMode('ai')">
+      <div class="mode-icon">🤖</div>
+      <h3>Против ИИ</h3>
+      <p>Тренировка с компьютером</p>
+      <div class="mode-difficulty" id="ai-difficulty-select">
+        <button class="diff-btn active" data-diff="easy">Лёгкий</button>
+        <button class="diff-btn" data-diff="medium">Средний</button>
+        <button class="diff-btn" data-diff="hard">Сложный</button>
+      </div>
+    </div>
+    <div class="mode-card" onclick="UI.selectMode('multiplayer')">
+      <div class="mode-icon">👥</div>
+      <h3>Мультиплеер</h3>
+      <p>Быстрый поиск соперника</p>
+      <div class="mode-badge">Рейтинговый</div>
+    </div>
+  </div>
+</div>
+
+<!-- Game Screen -->
+<div id="game-screen" class="screen hidden">
+  <!-- 3D Canvas -->
+  <canvas id="chess-canvas"></canvas>
+
+  <!-- Top HUD -->
+  <div class="hud-top">
+    <div class="hud-player hud-player--black" id="hud-opponent">
+      <div class="hud-avatar">♔</div>
+      <div class="hud-info">
+        <span class="hud-name" id="opponent-name">Соперник</span>
+        <span class="hud-elo" id="opponent-elo">ELO —</span>
+      </div>
+      <div class="hud-clock" id="clock-black">10:00</div>
+    </div>
+  </div>
+
+  <!-- Status Bar -->
+  <div class="status-bar" id="status-bar">
+    <span id="status-text">Ваш ход</span>
+  </div>
+
+  <!-- Captured pieces -->
+  <div class="captured-row" id="captured-black"></div>
+
+  <!-- Bottom HUD -->
+  <div class="hud-bottom">
+    <div class="hud-player hud-player--white" id="hud-self">
+      <div class="hud-avatar">♚</div>
+      <div class="hud-info">
+        <span class="hud-name" id="self-name">Вы</span>
+        <span class="hud-elo" id="self-elo">ELO —</span>
+      </div>
+      <div class="hud-clock" id="clock-white">10:00</div>
+    </div>
+
+    <!-- Game Controls -->
+    <div class="game-controls">
+      <button class="ctrl-btn" onclick="Game.rotateCamera()" title="Повернуть камеру">🔄</button>
+      <button class="ctrl-btn" onclick="UI.cycleBackground()" title="Сменить фон">🎨</button>
+      <button class="ctrl-btn" onclick="Game.offerDraw()" title="Предложить ничью">🤝</button>
+      <button class="ctrl-btn ctrl-btn--danger" onclick="UI.confirmResign()" title="Сдаться">🏳️</button>
+    </div>
+  </div>
+
+  <div class="captured-row" id="captured-white"></div>
+</div>
+
+<!-- Game Over Modal -->
+<div id="game-over-modal" class="modal hidden">
+  <div class="modal-content">
+    <div class="modal-icon" id="result-icon">👑</div>
+    <h2 id="result-title">Победа!</h2>
+    <p id="result-desc">Мат в 32 хода</p>
+    <div class="elo-change" id="elo-change">+15 ELO</div>
+    <div class="modal-buttons">
+      <button class="btn btn-primary" onclick="UI.playAgain()">Ещё раз</button>
+      <button class="btn btn-secondary" onclick="UI.showMenu()">В меню</button>
+    </div>
+  </div>
+</div>
+
+<!-- Waiting Modal -->
+<div id="waiting-modal" class="modal hidden">
+  <div class="modal-content">
+    <div class="spinner">⚙️</div>
+    <h2>Поиск соперника...</h2>
+    <p>Ожидайте подключения игрока</p>
+    <button class="btn btn-secondary" onclick="Game.cancelSearch()">Отмена</button>
+  </div>
+</div>
+
+<!-- Leaderboard Modal -->
+<div id="leaderboard-modal" class="modal hidden">
+  <div class="modal-content modal-content--wide">
+    <div class="modal-header">
+      <h2>🏆 Таблица лидеров</h2>
+      <button class="close-btn" onclick="UI.closeModal('leaderboard-modal')">✕</button>
+    </div>
+    <div id="leaderboard-list" class="leaderboard-list"></div>
+  </div>
+</div>
+
+<!-- Draw Offer Modal -->
+<div id="draw-modal" class="modal hidden">
+  <div class="modal-content">
+    <h2>🤝 Предложение ничьей</h2>
+    <p>Соперник предлагает ничью</p>
+    <div class="modal-buttons">
+      <button class="btn btn-primary" onclick="Game.acceptDraw()">Принять</button>
+      <button class="btn btn-secondary" onclick="UI.closeModal('draw-modal')">Отказать</button>
+    </div>
+  </div>
+</div>
+
+<!-- Promotion Modal -->
+<div id="promotion-modal" class="modal hidden">
+  <div class="modal-content">
+    <h2>Выберите фигуру</h2>
+    <div class="promotion-pieces" id="promotion-pieces"></div>
+  </div>
+</div>
+
+<!-- Scripts -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="/js/GLTFLoader.js"></script>
+<script src="/js/three-addons.js"></script>
+<script src="/js/pieces.js"></script>
+<script src="/js/scene.js"></script>
+<script src="/js/game.js"></script>
+<script src="/js/ui.js"></script>
+<script src="/js/app.js"></script>
+</body>
+</html>
