@@ -661,3 +661,50 @@ html, body {
   border-color: var(--gold);
   box-shadow: 0 0 10px rgba(201,168,76,0.3);
 }
+
+/* ── FIXES v2 ─────────────────────────────────────────────────────────── */
+
+/* Статус — убрать с центра, перенести под HUD сверху */
+.status-bar {
+  position: absolute;
+  top: auto !important;
+  bottom: 100px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 10;
+  pointer-events: none;
+}
+
+#status-text {
+  display: inline-block;
+  background: rgba(0,0,0,0.65);
+  border: 1px solid rgba(255,255,255,0.12);
+  border-radius: 20px;
+  padding: 5px 14px;
+  font-size: 12px;
+  font-weight: 600;
+  color: rgba(255,255,255,0.85);
+  backdrop-filter: blur(8px);
+  white-space: nowrap;
+}
+
+#status-text.check {
+  background: rgba(220,50,50,0.75);
+  border-color: #e05555;
+  color: #fff;
+}
+
+/* Loading bar — анимированная ширина */
+.loading-fill {
+  animation: none !important;
+  transition: width 0.4s ease;
+  width: 0%;
+}
+
+/* Убрать коричневый дефолтный фон body */
+body { background: #0a0a0f !important; }
+canvas { display: block; }
+
+/* HUD — чуть компактнее */
+.hud-top, .hud-bot { padding: 10px 14px; }
+.hud-clock { font-size: 14px; padding: 4px 9px; min-width: 52px; }
