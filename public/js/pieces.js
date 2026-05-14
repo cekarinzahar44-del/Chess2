@@ -134,3 +134,4 @@ const PieceFactory = (() => {
 
   return { init, createMaterials, createPiece };
 })();
+window.PieceFactory = PieceFactory;
