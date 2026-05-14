@@ -253,3 +253,4 @@ const UI = (() => {
     cycleBackground, setupMainButton, selectMode
   };
 })();
+window.UI = UI;
