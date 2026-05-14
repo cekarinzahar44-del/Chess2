@@ -1,94 +1,78 @@
 // public/js/app.js
-(async function() {
+(async function () {
   'use strict';
 
-  // ── Telegram WebApp Init ────────────────────────────────────────────────
+  // ── Telegram WebApp ──────────────────────────────────────────────────────
   const tg = window.Telegram?.WebApp;
   if (tg) {
     tg.ready();
     tg.expand();
     tg.enableClosingConfirmation();
-    // Theme
-    if (tg.colorScheme === 'dark' || true) {
-      document.documentElement.style.setProperty('--bg', '#0a0a0f');
-    }
-    // Disable swipe back if supported
     if (tg.disableVerticalSwipes) tg.disableVerticalSwipes();
   }
 
-  // ── Loading Steps ───────────────────────────────────────────────────────
   const loadingText = document.querySelector('.loading-text');
-  function setLoadingText(text) {
+  const loadingFill = document.querySelector('.loading-fill');
+  function setLoading(text, pct) {
     if (loadingText) loadingText.textContent = text;
+    if (loadingFill && pct !== undefined) loadingFill.style.width = pct + '%';
   }
-
-  async function sleep(ms) {
-    return new Promise(resolve => setTimeout(resolve, ms));
-  }
+  function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
 
   try {
-    // Step 1: Init Three.js Scene
-    setLoadingText('Инициализация 3D...');
-    await sleep(150);
-
+    // 1. Init Three.js — самый вероятный источник ошибок
+    setLoading('Инициализация 3D...', 20);
+    await sleep(100);
     const canvas = document.getElementById('chess-canvas');
+    if (!canvas) throw new Error('Canvas element not found');
+    if (typeof THREE === 'undefined') throw new Error('Three.js not loaded');
     Scene3D.init(canvas);
+    setLoading('3D сцена готова', 40);
 
-    // Step 2: Load GLB chess model
-    setLoadingText('Загрузка 3D фигур...');
-    await PieceFactory.init();   // loads GLB or falls back to procedural
+    // 2. Загрузка фигур (GLB или процедурные — не бросает исключение)
+    setLoading('Загрузка фигур...', 55);
+    await PieceFactory.init();
+    setLoading('Фигуры загружены', 70);
 
-    // Step 3: Connect WebSocket
-    setLoadingText('Подключение к серверу...');
-    await sleep(200);
+    // 3. WebSocket
+    setLoading('Подключение...', 85);
+    await sleep(150);
     Game.init();
 
-    // Step 4: Load assets
-    setLoadingText('Почти готово...');
-    await sleep(300);
+    setLoading('Готово!', 100);
+    await sleep(400);
 
-    // Step 4: Done
-    setLoadingText('Готово!');
-    await sleep(300);
-
-    // Hide loading, show menu
-    const loading = document.getElementById('loading-screen');
-    loading.style.opacity = '0';
-    loading.style.transition = 'opacity 0.5s ease';
-    await sleep(500);
-    loading.style.display = 'none';
+    // Скрыть loading
+    const ls = document.getElementById('loading-screen');
+    ls.style.transition = 'opacity 0.5s ease';
+    ls.style.opacity = '0';
+    await sleep(520);
+    ls.style.display = 'none';
 
     UI.showMenu();
 
   } catch (err) {
     console.error('Init error:', err);
-    setLoadingText('Ошибка загрузки. Перезапустите.');
+    // Показать детальную ошибку для отладки
+    setLoading('Ошибка: ' + err.message);
+    if (loadingFill) loadingFill.style.background = '#e05555';
   }
 
-  // ── Back button handler ─────────────────────────────────────────────────
+  // ── Back button ───────────────────────────────────────────────────────────
   if (tg) {
     tg.BackButton.onClick(() => {
       const gameScreen = document.getElementById('game-screen');
       const modeSelect = document.getElementById('mode-select');
       if (!gameScreen.classList.contains('hidden')) {
-        tg.showConfirm('Покинуть партию?', (ok) => {
-          if (ok) { Game.resign(); UI.showMenu(); }
-        });
+        tg.showConfirm('Покинуть партию?', ok => { if (ok) { Game.resign(); UI.showMenu(); } });
       } else if (!modeSelect.classList.contains('hidden')) {
         UI.showMenu();
-        tg.BackButton.hide();
       }
     });
-
-    // Show back button when not on main menu
     const observer = new MutationObserver(() => {
       const onMenu = !document.getElementById('main-menu').classList.contains('hidden');
-      if (onMenu) tg.BackButton.hide();
-      else tg.BackButton.show();
+      if (onMenu) tg.BackButton.hide(); else tg.BackButton.show();
     });
-    observer.observe(document.getElementById('main-menu'), {
-      attributes: true, attributeFilter: ['class']
-    });
+    observer.observe(document.getElementById('main-menu'), { attributes: true, attributeFilter: ['class'] });
   }
-
 })();
