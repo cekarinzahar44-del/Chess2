@@ -35,6 +35,9 @@ app.get('/api/player/:telegramId', async (req, res) => {
   }
 });
 
+// Debug page
+app.get("/debug", (req, res) => res.sendFile(path.join(__dirname, "../public/debug.html")));
+
 // Serve index.html for all routes (SPA)
 app.get('*', (req, res) => {
   res.sendFile(path.join(__dirname, '../public/index.html'));
@@ -53,3 +56,4 @@ async function start() {
 }
 
 start().catch(console.error);
+
