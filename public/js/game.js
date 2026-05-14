@@ -542,3 +542,4 @@ const Game = (() => {
     handleSquareClick
   };
 })();
+window.Game = Game;
