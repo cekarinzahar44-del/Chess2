@@ -2,7 +2,6 @@
 (async function () {
   'use strict';
 
-  // ── Telegram WebApp ──────────────────────────────────────────────────────
   const tg = window.Telegram?.WebApp;
   if (tg) {
     tg.ready();
@@ -13,6 +12,7 @@
 
   const loadingText = document.querySelector('.loading-text');
   const loadingFill = document.querySelector('.loading-fill');
+
   function setLoading(text, pct) {
     if (loadingText) loadingText.textContent = text;
     if (loadingFill && pct !== undefined) loadingFill.style.width = pct + '%';
@@ -20,27 +20,35 @@
   function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
 
   try {
-    // 1. Init Three.js — самый вероятный источник ошибок
-    setLoading('Инициализация 3D...', 20);
-    await sleep(100);
+    // 1. Проверяем THREE
+    setLoading('Инициализация 3D...', 15);
+    await sleep(80);
+    if (typeof THREE === 'undefined') throw new Error('Three.js не загружен (проверьте интернет)');
+
+    // 2. Инициализируем GLTFLoader ЗДЕСЬ — когда THREE уже доступен
+    if (typeof window.__initGLTFLoader === 'function') {
+      window.__initGLTFLoader();
+    }
+
+    // 3. Инициализируем сцену
+    setLoading('Создание сцены...', 30);
     const canvas = document.getElementById('chess-canvas');
-    if (!canvas) throw new Error('Canvas element not found');
-    if (typeof THREE === 'undefined') throw new Error('Three.js not loaded');
+    if (!canvas) throw new Error('Canvas не найден');
     Scene3D.init(canvas);
-    setLoading('3D сцена готова', 40);
+    setLoading('Сцена готова', 45);
 
-    // 2. Загрузка фигур (GLB или процедурные — не бросает исключение)
-    setLoading('Загрузка фигур...', 55);
+    // 4. Загрузка фигур
+    setLoading('Загрузка фигур...', 60);
     await PieceFactory.init();
-    setLoading('Фигуры загружены', 70);
+    setLoading('Фигуры загружены', 75);
 
-    // 3. WebSocket
-    setLoading('Подключение...', 85);
-    await sleep(150);
+    // 5. WebSocket
+    setLoading('Подключение к серверу...', 88);
+    await sleep(120);
     Game.init();
 
     setLoading('Готово!', 100);
-    await sleep(400);
+    await sleep(350);
 
     // Скрыть loading
     const ls = document.getElementById('loading-screen');
@@ -53,12 +61,11 @@
 
   } catch (err) {
     console.error('Init error:', err);
-    // Показать детальную ошибку для отладки
     setLoading('Ошибка: ' + err.message);
-    if (loadingFill) loadingFill.style.background = '#e05555';
+    if (loadingFill) { loadingFill.style.background = '#e05555'; loadingFill.style.width = '100%'; }
   }
 
-  // ── Back button ───────────────────────────────────────────────────────────
+  // Back button
   if (tg) {
     tg.BackButton.onClick(() => {
       const gameScreen = document.getElementById('game-screen');
