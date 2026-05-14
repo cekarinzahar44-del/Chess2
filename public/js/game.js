@@ -1,5 +1,4 @@
 // public/js/game.js
-\
 const Game = (() => {
   let ws = null;
   let wsId = null;
