@@ -20,37 +20,48 @@
   function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
 
   try {
-    // 1. Проверяем THREE
-    setLoading('Инициализация 3D...', 15);
+    setLoading('Проверка движка...', 10);
     await sleep(80);
-    if (typeof THREE === 'undefined') throw new Error('Three.js не загружен (проверьте интернет)');
 
-    // 2. Инициализируем GLTFLoader ЗДЕСЬ — когда THREE уже доступен
-    if (typeof window.__initGLTFLoader === 'function') {
-      window.__initGLTFLoader();
+    // ── Шаг 1: убеждаемся что THREE загружен ──────────────────────────────
+    if (typeof THREE === 'undefined') {
+      throw new Error('Three.js не загружен — проверьте интернет-соединение');
     }
 
-    // 3. Инициализируем сцену
-    setLoading('Создание сцены...', 30);
+    // ── Шаг 2: инициализируем все аддоны ЗДЕСЬ, когда THREE уже есть ─────
+    if (typeof window.__initOrbitControls === 'function') {
+      window.__initOrbitControls();   // регистрирует THREE.OrbitControls
+    } else {
+      throw new Error('OrbitControls factory not found');
+    }
+
+    if (typeof window.__initGLTFLoader === 'function') {
+      window.__initGLTFLoader();      // регистрирует THREE.GLTFLoader
+    }
+
+    setLoading('Создание сцены...', 28);
+    await sleep(60);
+
+    // ── Шаг 3: сцена ──────────────────────────────────────────────────────
     const canvas = document.getElementById('chess-canvas');
-    if (!canvas) throw new Error('Canvas не найден');
+    if (!canvas) throw new Error('Canvas #chess-canvas не найден');
     Scene3D.init(canvas);
-    setLoading('Сцена готова', 45);
+    setLoading('Сцена готова', 48);
 
-    // 4. Загрузка фигур
-    setLoading('Загрузка фигур...', 60);
+    // ── Шаг 4: фигуры ─────────────────────────────────────────────────────
+    setLoading('Загрузка фигур...', 62);
     await PieceFactory.init();
-    setLoading('Фигуры загружены', 75);
+    setLoading('Фигуры загружены', 78);
 
-    // 5. WebSocket
-    setLoading('Подключение к серверу...', 88);
-    await sleep(120);
+    // ── Шаг 5: WebSocket ─────────────────────────────────────────────────
+    setLoading('Подключение...', 90);
+    await sleep(100);
     Game.init();
 
     setLoading('Готово!', 100);
     await sleep(350);
 
-    // Скрыть loading
+    // ── Скрыть loading ────────────────────────────────────────────────────
     const ls = document.getElementById('loading-screen');
     ls.style.transition = 'opacity 0.5s ease';
     ls.style.opacity = '0';
@@ -62,16 +73,21 @@
   } catch (err) {
     console.error('Init error:', err);
     setLoading('Ошибка: ' + err.message);
-    if (loadingFill) { loadingFill.style.background = '#e05555'; loadingFill.style.width = '100%'; }
+    if (loadingFill) {
+      loadingFill.style.background = '#e05555';
+      loadingFill.style.width = '100%';
+    }
   }
 
-  // Back button
+  // ── Back button ───────────────────────────────────────────────────────
   if (tg) {
     tg.BackButton.onClick(() => {
       const gameScreen = document.getElementById('game-screen');
       const modeSelect = document.getElementById('mode-select');
       if (!gameScreen.classList.contains('hidden')) {
-        tg.showConfirm('Покинуть партию?', ok => { if (ok) { Game.resign(); UI.showMenu(); } });
+        tg.showConfirm('Покинуть партию?', ok => {
+          if (ok) { Game.resign(); UI.showMenu(); }
+        });
       } else if (!modeSelect.classList.contains('hidden')) {
         UI.showMenu();
       }
@@ -80,6 +96,8 @@
       const onMenu = !document.getElementById('main-menu').classList.contains('hidden');
       if (onMenu) tg.BackButton.hide(); else tg.BackButton.show();
     });
-    observer.observe(document.getElementById('main-menu'), { attributes: true, attributeFilter: ['class'] });
+    observer.observe(document.getElementById('main-menu'), {
+      attributes: true, attributeFilter: ['class']
+    });
   }
 })();
