@@ -13,6 +13,71 @@ const Scene3D = (() => {
   const SQ = 1.0;
   const OFF = -3.5;
 
+  // ── Фабрика фигур (ДОБАВЛЕНО) ─────────────────────────────────────────────
+  const PieceFactory = {
+    createPiece(type, color) {
+      let geometry;
+      const colorValue = color === 'white' ? 0xf5f5f5 : 0x222222;
+      const metalness = color === 'white' ? 0.85 : 0.4;
+      
+      // Создаём геометрию в зависимости от типа фигуры
+      switch(type) {
+        case 'pawn':
+          geometry = new THREE.CylinderGeometry(0.28, 0.32, 0.38, 8);
+          break;
+        case 'rook':
+          geometry = new THREE.BoxGeometry(0.34, 0.38, 0.34);
+          break;
+        case 'knight':
+          geometry = new THREE.CylinderGeometry(0.28, 0.32, 0.38, 8);
+          break;
+        case 'bishop':
+          geometry = new THREE.ConeGeometry(0.28, 0.42, 8);
+          break;
+        case 'queen':
+          geometry = new THREE.CylinderGeometry(0.30, 0.34, 0.42, 8);
+          break;
+        case 'king':
+          geometry = new THREE.CylinderGeometry(0.32, 0.36, 0.46, 8);
+          break;
+        default:
+          geometry = new THREE.SphereGeometry(0.28, 16);
+      }
+      
+      const material = new THREE.MeshStandardMaterial({ 
+        color: colorValue, 
+        metalness: metalness, 
+        roughness: 0.35,
+        emissive: color === 'white' ? 0x333333 : 0x000000,
+        emissiveIntensity: 0.05
+      });
+      
+      const mesh = new THREE.Mesh(geometry, material);
+      mesh.userData.isChessPiece = true;
+      mesh.userData.type = type;
+      mesh.userData.color = color;
+      mesh.castShadow = true;
+      mesh.receiveShadow = false;
+      
+      // Добавляем маленькую сферу на верхушку для короля и ферзя
+      if (type === 'king') {
+        const topMat = new THREE.MeshStandardMaterial({ color: colorValue, metalness: 0.9 });
+        const top = new THREE.Mesh(new THREE.SphereGeometry(0.12, 8, 8), topMat);
+        top.position.y = 0.26;
+        top.castShadow = true;
+        mesh.add(top);
+      } else if (type === 'queen') {
+        const topMat = new THREE.MeshStandardMaterial({ color: colorValue, metalness: 0.9 });
+        const top = new THREE.Mesh(new THREE.SphereGeometry(0.1, 8, 8), topMat);
+        top.position.y = 0.25;
+        top.castShadow = true;
+        mesh.add(top);
+      }
+      
+      return mesh;
+    }
+  };
+
   // ── Init ─────────────────────────────────────────────────────────────────
   function init(canvas) {
     // Материалы — создаём ЗДЕСЬ, после загрузки THREE
@@ -136,9 +201,6 @@ const Scene3D = (() => {
       }
     }
 
-    // === БУКВЫ И ЦИФРЫ (простые метки через маленькие плашки) ===
-    // Пропускаем — добавим через Canvas texture если нужно
-
     // === НОЖКИ ДОСКИ ===
     const legMat = new THREE.MeshStandardMaterial({ color: 0x1e0d04, roughness: 0.6, metalness: 0.1 });
     [[-4.2,-4.2],[4.2,-4.2],[-4.2,4.2],[4.2,4.2]].forEach(([x,z]) => {
@@ -192,7 +254,11 @@ const Scene3D = (() => {
   function setBackground(idx) {
     currentBg = idx % 3;
     clearEnvProps();
-    [_bgCastle, _bgSpace, _bgMinimal][currentBg]();
+    switch(currentBg) {
+      case 0: _bgCastle(); break;
+      case 1: _bgSpace(); break;
+      case 2: _bgMinimal(); break;
+    }
   }
 
   function _bgCastle() {
@@ -314,7 +380,8 @@ const Scene3D = (() => {
     const toRemove = piecesGroup.children.filter(p => p.userData.file === file && p.userData.rank === rank);
     toRemove.forEach(p => {
       piecesGroup.remove(p);
-      p.traverse(c => { if (c.geometry) c.geometry.dispose(); });
+      if (p.geometry) p.geometry.dispose();
+      if (p.material) p.material.dispose();
     });
   }
 
@@ -322,7 +389,8 @@ const Scene3D = (() => {
     while (piecesGroup.children.length) {
       const p = piecesGroup.children[0];
       piecesGroup.remove(p);
-      p.traverse(c => { if (c.geometry) c.geometry.dispose(); });
+      if (p.geometry) p.geometry.dispose();
+      if (p.material) p.material.dispose();
     }
   }
 
@@ -355,7 +423,12 @@ const Scene3D = (() => {
 
   // ── Подсветка клеток ──────────────────────────────────────────────────────
   function clearHighlights() {
-    while (highlightGroup.children.length) highlightGroup.remove(highlightGroup.children[0]);
+    while (highlightGroup.children.length) {
+      const child = highlightGroup.children[0];
+      if (child.geometry) child.geometry.dispose();
+      if (child.material) child.material.dispose();
+      highlightGroup.remove(child);
+    }
   }
 
   function highlightSquare(file, rank, type = 'move') {
@@ -363,28 +436,45 @@ const Scene3D = (() => {
     const pos = squareToWorld(file, rank);
     const mat = mats[type] || highlightMoveMat;
 
-    const sq = new THREE.Mesh(new THREE.PlaneGeometry(0.9, 0.9), mat);
+    const sq = new THREE.Mesh(new THREE.PlaneGeometry(0.92, 0.92), mat);
     sq.rotation.x = -Math.PI / 2;
-    sq.position.set(pos.x, 0.1, pos.z);
+    sq.position.set(pos.x, 0.095, pos.z);
+    sq.userData = { highlight: true, type: type };
     highlightGroup.add(sq);
 
     if (type === 'move') {
       const dot = new THREE.Mesh(new THREE.CircleGeometry(0.16, 16), mat);
       dot.rotation.x = -Math.PI / 2;
-      dot.position.set(pos.x, 0.11, pos.z);
+      dot.position.set(pos.x, 0.105, pos.z);
+      dot.userData = { highlight: true, dot: true };
       highlightGroup.add(dot);
     }
   }
 
-  // ── Raycasting ────────────────────────────────────────────────────────────
+  // ── Raycasting (ИСПРАВЛЕНО) ───────────────────────────────────────────────
   const raycaster = new THREE.Raycaster();
   const mouse2 = new THREE.Vector2();
 
   function getClickedSquare(eventOrTouch) {
     const canvas = renderer.domElement;
     const rect = canvas.getBoundingClientRect();
-    const clientX = eventOrTouch.clientX !== undefined ? eventOrTouch.clientX : eventOrTouch.touches[0].clientX;
-    const clientY = eventOrTouch.clientY !== undefined ? eventOrTouch.clientY : eventOrTouch.touches[0].clientY;
+    
+    let clientX, clientY;
+    
+    // Исправленная обработка touch-событий
+    if (eventOrTouch.touches && eventOrTouch.touches.length > 0) {
+      clientX = eventOrTouch.touches[0].clientX;
+      clientY = eventOrTouch.touches[0].clientY;
+    } else if (eventOrTouch.changedTouches && eventOrTouch.changedTouches.length > 0) {
+      clientX = eventOrTouch.changedTouches[0].clientX;
+      clientY = eventOrTouch.changedTouches[0].clientY;
+    } else {
+      clientX = eventOrTouch.clientX;
+      clientY = eventOrTouch.clientY;
+    }
+    
+    if (clientX === undefined || clientY === undefined) return null;
+    
     mouse2.x =  ((clientX - rect.left) / rect.width)  * 2 - 1;
     mouse2.y = -((clientY - rect.top)  / rect.height) * 2 + 1;
     raycaster.setFromCamera(mouse2, camera);
@@ -446,10 +536,15 @@ const Scene3D = (() => {
       if (cameraAnimation) { if (cameraAnimation(dt)) cameraAnimation = null; }
       pendingAnimations = pendingAnimations.filter(fn => !fn(dt));
 
-      // Анимация свечей
+      // Анимация свечей и звёзд
       scene.traverse(o => {
-        if (o.userData.isCandle) o.intensity = 0.8 + Math.sin(clock*3.7+o.position.x)*0.25+Math.sin(clock*7.1)*0.1;
-        if (o.userData.isFlame)  { o.position.y += Math.sin(clock*9+o.position.x*3)*0.003; o.scale.x = 1+Math.sin(clock*7)*0.12; }
+        if (o.userData.isCandle && o.intensity !== undefined) {
+          o.intensity = 0.8 + Math.sin(clock*3.7+o.position.x)*0.25 + Math.sin(clock*7.1)*0.1;
+        }
+        if (o.userData.isFlame) { 
+          o.position.y += Math.sin(clock*9+o.position.x*3)*0.003; 
+          o.scale.x = 1 + Math.sin(clock*7)*0.12;
+        }
         if (o.userData.isStars)  o.rotation.y += 0.00006;
       });
 
