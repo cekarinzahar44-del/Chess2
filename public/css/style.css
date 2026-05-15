@@ -708,3 +708,154 @@ canvas { display: block; }
 /* HUD — чуть компактнее */
 .hud-top, .hud-bot { padding: 10px 14px; }
 .hud-clock { font-size: 14px; padding: 4px 9px; min-width: 52px; }
+
+/* ═══════════════════════════════════════════════
+   ФИНАЛЬНЫЕ СТИЛИ — адаптив для всех устройств
+   ═══════════════════════════════════════════════ */
+
+/* Базовый сброс для игрового экрана */
+#game-screen {
+  position: fixed;
+  inset: 0;
+  overflow: hidden;
+  background: #000;
+}
+
+/* Canvas на весь экран */
+#chess-canvas {
+  position: absolute;
+  inset: 0;
+  width: 100% !important;
+  height: 100% !important;
+  touch-action: none;
+  display: block;
+}
+
+/* HUD сверху — компактный */
+.hud-top {
+  position: fixed;
+  top: 0; left: 0; right: 0;
+  padding: 8px 12px;
+  background: linear-gradient(to bottom, rgba(0,0,0,0.82) 0%, transparent 100%);
+  z-index: 20;
+  pointer-events: none;
+}
+
+/* HUD снизу */
+.hud-bottom {
+  position: fixed;
+  bottom: 0; left: 0; right: 0;
+  padding: 8px 12px 10px;
+  background: linear-gradient(to top, rgba(0,0,0,0.82) 0%, transparent 100%);
+  z-index: 20;
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+/* Статус — снизу над HUD */
+.status-bar {
+  position: fixed !important;
+  bottom: 68px !important;
+  left: 50% !important;
+  transform: translateX(-50%) !important;
+  top: auto !important;
+  z-index: 21;
+  pointer-events: none;
+  white-space: nowrap;
+}
+
+#status-text {
+  display: inline-block;
+  background: rgba(0,0,0,0.72);
+  border: 1px solid rgba(255,255,255,0.15);
+  border-radius: 20px;
+  padding: 5px 16px;
+  font-size: 12px;
+  font-weight: 600;
+  color: rgba(255,255,255,0.9);
+  backdrop-filter: blur(10px);
+  letter-spacing: 0.3px;
+}
+
+#status-text.check {
+  background: rgba(200,40,40,0.8);
+  border-color: #e05555;
+  color: #fff;
+}
+
+/* Кнопки управления */
+.game-controls {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+
+.ctrl-btn {
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  border: 1px solid rgba(255,255,255,0.15);
+  background: rgba(0,0,0,0.55);
+  color: #fff;
+  font-size: 16px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  backdrop-filter: blur(8px);
+  transition: background 0.2s;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.ctrl-btn:active { background: rgba(255,255,255,0.15); transform: scale(0.92); }
+
+/* ── Телефон портрет (< 430px) ── */
+@media (max-width: 430px) {
+  .hud-top, .hud-bottom { padding: 6px 10px; }
+  .hud-name  { font-size: 12px; }
+  .hud-elo   { font-size: 10px; }
+  .hud-clock { font-size: 13px; padding: 4px 8px; min-width: 48px; }
+  .hud-av    { width: 30px; height: 30px; font-size: 15px; }
+  .ctrl-btn  { width: 34px; height: 34px; font-size: 15px; }
+  .status-bar { bottom: 60px !important; }
+  #status-text { font-size: 11px; padding: 4px 12px; }
+}
+
+/* ── Широкий экран / планшет ── */
+@media (min-width: 768px) {
+  .hud-top, .hud-bottom { padding: 12px 20px; }
+  .hud-name  { font-size: 15px; }
+  .hud-clock { font-size: 17px; min-width: 66px; }
+  .ctrl-btn  { width: 44px; height: 44px; font-size: 19px; }
+  .status-bar { bottom: 80px !important; }
+  #status-text { font-size: 14px; padding: 6px 20px; }
+}
+
+/* ── Очень широкий (планшет альбом / десктоп) ── */
+@media (min-width: 1024px) {
+  .hud-bottom { max-width: 900px; margin: 0 auto; left: 0; right: 0; }
+  .hud-top    { max-width: 900px; margin: 0 auto; left: 0; right: 0; }
+}
+
+/* Убрать захваченные фигуры — мешают на маленьком экране */
+.captured-row { display: none !important; }
+
+/* Меню — адаптив */
+.menu-content {
+  padding: 32px 20px 28px;
+  max-width: 380px;
+  margin: 0 auto;
+}
+
+@media (max-width: 380px) {
+  .logo-title  { font-size: 28px; letter-spacing: 4px; }
+  .logo-icon   { font-size: 44px; }
+  .btn         { padding: 13px 20px; font-size: 14px; }
+  .player-card { padding: 12px 16px; }
+}
+
+@media (min-height: 800px) {
+  .menu-content { gap: 32px; }
+}
