@@ -1,4 +1,4 @@
-// scene.js — фиксированная камера, красивая доска
+// scene.js — Полная версия с красивыми фигурами, доской, анимациями и захватом
 
 const Scene3D = (() => {
   let renderer, scene, camera, controls;
@@ -13,90 +13,85 @@ const Scene3D = (() => {
   const SQ = 1.0;
   const OFF = -3.5;
 
-  // ── Фабрика фигур (ДОБАВЛЕНО) ─────────────────────────────────────────────
+  // ===================== ФАБРИКА ФИГУР =====================
   const PieceFactory = {
     createPiece(type, color) {
-      let geometry;
-      const colorValue = color === 'white' ? 0xf5f5f5 : 0x222222;
-      const metalness = color === 'white' ? 0.85 : 0.4;
-      
-      // Создаём геометрию в зависимости от типа фигуры
+      const isWhite = color === 'white';
+      const baseColor = isWhite ? 0xf8f8f8 : 0x1a1a1a;
+      const metal = isWhite ? 0.78 : 0.38;
+
+      const material = new THREE.MeshStandardMaterial({ 
+        color: baseColor, 
+        metalness: metal, 
+        roughness: 0.35 
+      });
+
+      let mainMesh;
+
       switch(type) {
         case 'pawn':
-          geometry = new THREE.CylinderGeometry(0.28, 0.32, 0.38, 8);
+          mainMesh = new THREE.Mesh(new THREE.CylinderGeometry(0.22, 0.28, 0.55, 16), material);
           break;
         case 'rook':
-          geometry = new THREE.BoxGeometry(0.34, 0.38, 0.34);
+          mainMesh = new THREE.Mesh(new THREE.BoxGeometry(0.38, 0.68, 0.38), material);
+          const rookTop = new THREE.Mesh(new THREE.CylinderGeometry(0.19, 0.19, 0.15, 16), material);
+          rookTop.position.y = 0.41;
+          mainMesh.add(rookTop);
           break;
         case 'knight':
-          geometry = new THREE.CylinderGeometry(0.28, 0.32, 0.38, 8);
+          mainMesh = new THREE.Mesh(new THREE.CylinderGeometry(0.25, 0.28, 0.62, 16), material);
+          const head = new THREE.Mesh(new THREE.SphereGeometry(0.23, 12, 12), material);
+          head.position.set(0.1, 0.38, 0);
+          head.rotation.z = 0.7;
+          mainMesh.add(head);
           break;
         case 'bishop':
-          geometry = new THREE.ConeGeometry(0.28, 0.42, 8);
+          mainMesh = new THREE.Mesh(new THREE.ConeGeometry(0.24, 0.75, 16), material);
           break;
         case 'queen':
-          geometry = new THREE.CylinderGeometry(0.30, 0.34, 0.42, 8);
+          mainMesh = new THREE.Mesh(new THREE.CylinderGeometry(0.26, 0.32, 0.85, 16), material);
+          const qCrown = new THREE.Mesh(new THREE.SphereGeometry(0.15, 12, 12), material);
+          qCrown.position.y = 0.5;
+          mainMesh.add(qCrown);
           break;
         case 'king':
-          geometry = new THREE.CylinderGeometry(0.32, 0.36, 0.46, 8);
+          mainMesh = new THREE.Mesh(new THREE.CylinderGeometry(0.28, 0.32, 0.92, 16), material);
+          const cross = new THREE.Mesh(new THREE.BoxGeometry(0.07, 0.28, 0.07), material);
+          cross.position.y = 0.58;
+          mainMesh.add(cross);
           break;
         default:
-          geometry = new THREE.SphereGeometry(0.28, 16);
+          mainMesh = new THREE.Mesh(new THREE.SphereGeometry(0.3, 16, 16), material);
       }
-      
-      const material = new THREE.MeshStandardMaterial({ 
-        color: colorValue, 
-        metalness: metalness, 
-        roughness: 0.35,
-        emissive: color === 'white' ? 0x333333 : 0x000000,
-        emissiveIntensity: 0.05
-      });
-      
-      const mesh = new THREE.Mesh(geometry, material);
-      mesh.userData.isChessPiece = true;
-      mesh.userData.type = type;
-      mesh.userData.color = color;
-      mesh.castShadow = true;
-      mesh.receiveShadow = false;
-      
-      // Добавляем маленькую сферу на верхушку для короля и ферзя
-      if (type === 'king') {
-        const topMat = new THREE.MeshStandardMaterial({ color: colorValue, metalness: 0.9 });
-        const top = new THREE.Mesh(new THREE.SphereGeometry(0.12, 8, 8), topMat);
-        top.position.y = 0.26;
-        top.castShadow = true;
-        mesh.add(top);
-      } else if (type === 'queen') {
-        const topMat = new THREE.MeshStandardMaterial({ color: colorValue, metalness: 0.9 });
-        const top = new THREE.Mesh(new THREE.SphereGeometry(0.1, 8, 8), topMat);
-        top.position.y = 0.25;
-        top.castShadow = true;
-        mesh.add(top);
-      }
-      
-      return mesh;
+
+      mainMesh.castShadow = true;
+      mainMesh.receiveShadow = true;
+      mainMesh.userData = { isChessPiece: true, type, color, file: -1, rank: -1 };
+
+      // Подставка
+      const base = new THREE.Mesh(
+        new THREE.CylinderGeometry(0.35, 0.38, 0.12, 16),
+        new THREE.MeshStandardMaterial({ color: baseColor, metalness: 0.6, roughness: 0.5 })
+      );
+      base.position.y = -0.07;
+      mainMesh.add(base);
+
+      return mainMesh;
     }
   };
 
-  // ── Init ─────────────────────────────────────────────────────────────────
+  // ===================== INIT =====================
   function init(canvas) {
-    // Материалы — создаём ЗДЕСЬ, после загрузки THREE
-    lightSquareMat = new THREE.MeshStandardMaterial({
-      color: 0xc8956c, roughness: 0.55, metalness: 0.0
-    });
-    darkSquareMat = new THREE.MeshStandardMaterial({
-      color: 0x5c2e0e, roughness: 0.65, metalness: 0.0
-    });
-    boardFrameMat = new THREE.MeshStandardMaterial({
-      color: 0x3b1a08, roughness: 0.4, metalness: 0.05
-    });
-    boardSideMat = new THREE.MeshStandardMaterial({
-      color: 0x2a1205, roughness: 0.5, metalness: 0.05
-    });
-    highlightMoveMat    = new THREE.MeshStandardMaterial({ color: 0x44ff88, transparent: true, opacity: 0.5,  depthWrite: false });
-    highlightSelectMat  = new THREE.MeshStandardMaterial({ color: 0xffdd00, transparent: true, opacity: 0.6,  depthWrite: false });
-    highlightCaptureMat = new THREE.MeshStandardMaterial({ color: 0xff2222, transparent: true, opacity: 0.55, depthWrite: false });
-    highlightCheckMat   = new THREE.MeshStandardMaterial({ color: 0xff0000, transparent: true, opacity: 0.7,  depthWrite: false, emissive: new THREE.Color(0xff0000), emissiveIntensity: 0.4 });
+    // Материалы
+    lightSquareMat = new THREE.MeshStandardMaterial({ color: 0xc89b6c, roughness: 0.6 });
+    darkSquareMat  = new THREE.MeshStandardMaterial({ color: 0x5c2e0e, roughness: 0.7 });
+    boardFrameMat  = new THREE.MeshStandardMaterial({ color: 0x3b1a08, roughness: 0.45 });
+    boardSideMat   = new THREE.MeshStandardMaterial({ color: 0x2a1205, roughness: 0.55 });
+
+    highlightMoveMat    = new THREE.MeshStandardMaterial({ color: 0x44ff88, transparent: true, opacity: 0.45 });
+    highlightSelectMat  = new THREE.MeshStandardMaterial({ color: 0xffee44, transparent: true, opacity: 0.65 });
+    highlightCaptureMat = new THREE.MeshStandardMaterial({ color: 0xff4444, transparent: true, opacity: 0.6 });
+    highlightCheckMat   = new THREE.MeshStandardMaterial({ color: 0xff0000, transparent: true, opacity: 0.8, emissive: 0xff0000, emissiveIntensity: 0.5 });
 
     // Renderer
     renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
@@ -105,32 +100,26 @@ const Scene3D = (() => {
     renderer.shadowMap.enabled = true;
     renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    renderer.toneMappingExposure = 1.2;
+    renderer.toneMappingExposure = 1.1;
 
-    // Scene
     scene = new THREE.Scene();
 
-    // Camera — фиксированный угол, смотрит на доску сверху-сбоку
     camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 100);
-    camera.position.set(0, 10, 9);
+    camera.position.set(0, 11, 12);
     camera.lookAt(0, 0, 0);
 
-    // Controls — ТОЛЬКО вращение по горизонтали, зум отключён на мобилке
     controls = new THREE.OrbitControls(camera, canvas);
-    controls.enableDamping   = true;
-    controls.dampingFactor   = 0.08;
-    controls.enablePan       = false;   // запрет перемещения
-    controls.enableZoom      = false;   // запрет зума — доска не уезжает
-    controls.minPolarAngle   = Math.PI / 4.5;  // мин угол (не слишком сверху)
-    controls.maxPolarAngle   = Math.PI / 3.2;  // макс угол (не слишком сбоку)
-    controls.minAzimuthAngle = -Math.PI / 8;   // небольшой поворот влево
-    controls.maxAzimuthAngle =  Math.PI / 8;   // небольшой поворот вправо
+    controls.enableDamping = true;
+    controls.dampingFactor = 0.1;
+    controls.enablePan = false;
+    controls.minDistance = 8;
+    controls.maxDistance = 22;
+    controls.minPolarAngle = Math.PI * 0.18;
+    controls.maxPolarAngle = Math.PI * 0.62;
     controls.target.set(0, 0, 0);
-    controls.update();
 
-    // Groups
-    boardGroup     = new THREE.Group();
-    piecesGroup    = new THREE.Group();
+    boardGroup = new THREE.Group();
+    piecesGroup = new THREE.Group();
     highlightGroup = new THREE.Group();
     scene.add(boardGroup, piecesGroup, highlightGroup);
 
@@ -142,232 +131,83 @@ const Scene3D = (() => {
     window.addEventListener('resize', onResize);
   }
 
-  // ── Красивая доска ────────────────────────────────────────────────────────
+  // ===================== ДОСКА =====================
   function buildBoard() {
-
-    // === ОСНОВАНИЕ ДОСКИ (толстое, как настоящее) ===
-    const baseGeo = new THREE.BoxGeometry(10.4, 0.55, 10.4);
-    const base = new THREE.Mesh(baseGeo, boardSideMat);
+    // Основание
+    const base = new THREE.Mesh(new THREE.BoxGeometry(10.4, 0.55, 10.4), boardSideMat);
     base.position.y = -0.30;
-    base.receiveShadow = true;
     base.castShadow = true;
+    base.receiveShadow = true;
     boardGroup.add(base);
 
-    // === РАМКА (чуть меньше основания, сверху) ===
-    const frameGeo = new THREE.BoxGeometry(9.8, 0.15, 9.8);
-    const frame = new THREE.Mesh(frameGeo, boardFrameMat);
-    frame.position.y = 0.02;
-    frame.receiveShadow = true;
+    // Рамка
+    const frame = new THREE.Mesh(new THREE.BoxGeometry(9.8, 0.18, 9.8), boardFrameMat);
+    frame.position.y = 0.05;
     boardGroup.add(frame);
 
-    // === ЗОЛОТОЙ КАНТ ===
-    const edgeMat = new THREE.MeshStandardMaterial({
-      color: 0xb8860b, roughness: 0.2, metalness: 0.85
-    });
-
-    // 4 полосы канта по периметру
-    const cantW = 9.9, cantT = 0.12, cantH = 0.06;
+    // Золотой кант
+    const edgeMat = new THREE.MeshStandardMaterial({ color: 0xb8860b, metalness: 0.9, roughness: 0.25 });
+    const cantW = 9.9, cantT = 0.13, cantH = 0.07;
     [
-      { pos: [0, 0.08, -4.9],  rot: [0,0,0],            size: [cantW, cantH, cantT] },
-      { pos: [0, 0.08,  4.9],  rot: [0,0,0],            size: [cantW, cantH, cantT] },
-      { pos: [-4.9, 0.08, 0],  rot: [0, Math.PI/2, 0],  size: [cantW, cantH, cantT] },
-      { pos: [ 4.9, 0.08, 0],  rot: [0, Math.PI/2, 0],  size: [cantW, cantH, cantT] },
-    ].forEach(({ pos, rot, size }) => {
-      const g = new THREE.BoxGeometry(...size);
+      { pos: [0, 0.09, -4.9], size: [cantW, cantH, cantT] },
+      { pos: [0, 0.09,  4.9], size: [cantW, cantH, cantT] },
+      { pos: [-4.9, 0.09, 0], rot: [0, Math.PI/2, 0], size: [cantW, cantH, cantT] },
+      { pos: [ 4.9, 0.09, 0], rot: [0, Math.PI/2, 0], size: [cantW, cantH, cantT] },
+    ].forEach(item => {
+      const g = new THREE.BoxGeometry(...item.size);
       const m = new THREE.Mesh(g, edgeMat);
-      m.position.set(...pos);
-      m.rotation.set(...rot);
+      m.position.set(...item.pos);
+      if (item.rot) m.rotation.set(...item.rot);
       boardGroup.add(m);
     });
 
-    // Угловые золотые углы
-    [[-4.9,-4.9],[4.9,-4.9],[-4.9,4.9],[4.9,4.9]].forEach(([x,z]) => {
-      const cg = new THREE.BoxGeometry(0.14, 0.07, 0.14);
-      const cm = new THREE.Mesh(cg, edgeMat);
-      cm.position.set(x, 0.085, z);
-      boardGroup.add(cm);
-    });
-
-    // === ИГРОВЫЕ КЛЕТКИ ===
-    const sqGeo = new THREE.BoxGeometry(SQ - 0.015, 0.06, SQ - 0.015);
+    // Клетки
+    const sqGeo = new THREE.BoxGeometry(SQ - 0.02, 0.08, SQ - 0.02);
     for (let r = 0; r < 8; r++) {
       for (let c = 0; c < 8; c++) {
         const isLight = (r + c) % 2 === 0;
         const mesh = new THREE.Mesh(sqGeo, isLight ? lightSquareMat : darkSquareMat);
-        mesh.position.set(OFF + c * SQ, 0.065, OFF + r * SQ);
+        mesh.position.set(OFF + c * SQ, 0.08, OFF + r * SQ);
         mesh.receiveShadow = true;
         mesh.userData = { isSquare: true, row: r, col: c };
         boardGroup.add(mesh);
       }
     }
-
-    // === НОЖКИ ДОСКИ ===
-    const legMat = new THREE.MeshStandardMaterial({ color: 0x1e0d04, roughness: 0.6, metalness: 0.1 });
-    [[-4.2,-4.2],[4.2,-4.2],[-4.2,4.2],[4.2,4.2]].forEach(([x,z]) => {
-      const lg = new THREE.CylinderGeometry(0.18, 0.25, 0.35, 10);
-      const lm = new THREE.Mesh(lg, legMat);
-      lm.position.set(x, -0.75, z);
-      lm.castShadow = true;
-      boardGroup.add(lm);
-    });
   }
 
-  // ── Освещение ─────────────────────────────────────────────────────────────
   function buildLighting() {
-    // Мягкий ambient
-    scene.add(new THREE.AmbientLight(0xfff5e0, 0.45));
+    scene.add(new THREE.AmbientLight(0xfff5e0, 0.5));
 
-    // Основной свет (сверху-сбоку)
-    const main = new THREE.DirectionalLight(0xfff8e8, 1.6);
-    main.position.set(4, 14, 6);
+    const main = new THREE.DirectionalLight(0xfff8e0, 1.4);
+    main.position.set(5, 18, 8);
     main.castShadow = true;
     main.shadow.mapSize.set(2048, 2048);
-    main.shadow.camera.left   = -8;
-    main.shadow.camera.right  =  8;
-    main.shadow.camera.top    =  8;
-    main.shadow.camera.bottom = -8;
-    main.shadow.bias = -0.001;
     scene.add(main);
 
-    // Заполняющий свет с другой стороны
-    const fill = new THREE.DirectionalLight(0xaabbff, 0.3);
-    fill.position.set(-5, 6, -5);
+    const fill = new THREE.DirectionalLight(0xaaccff, 0.4);
+    fill.position.set(-8, 8, -6);
     scene.add(fill);
-
-    // Подсветка снизу доски (имитация отражённого света от стола)
-    const bounce = new THREE.PointLight(0xff9955, 0.4, 15);
-    bounce.position.set(0, -2, 0);
-    scene.add(bounce);
   }
 
-  // ── Фоны ─────────────────────────────────────────────────────────────────
-  function clearEnvProps() {
-    const rem = [];
-    scene.traverse(o => { if (o.userData.envProp) rem.push(o); });
-    rem.forEach(o => {
-      scene.remove(o);
-      if (o.geometry) o.geometry.dispose();
-      if (o.material) [].concat(o.material).forEach(m => m.dispose());
-    });
-  }
-
+  // ===================== ФОНЫ =====================
   function setBackground(idx) {
     currentBg = idx % 3;
-    clearEnvProps();
-    switch(currentBg) {
-      case 0: _bgCastle(); break;
-      case 1: _bgSpace(); break;
-      case 2: _bgMinimal(); break;
-    }
-  }
-
-  function _bgCastle() {
-    scene.background = new THREE.Color(0x100806);
-    scene.fog = new THREE.FogExp2(0x100806, 0.045);
-
-    const floorMat = new THREE.MeshStandardMaterial({ color: 0x0d0804, roughness: 0.98 });
-    const floor = new THREE.Mesh(new THREE.PlaneGeometry(60, 60), floorMat);
-    floor.rotation.x = -Math.PI / 2;
-    floor.position.y = -1.1;
-    floor.receiveShadow = true;
-    floor.userData.envProp = true;
-    scene.add(floor);
-
-    // Свечи
-    [[-7,0,-7],[-7,0,7],[7,0,-7],[7,0,7],[-9,0,0],[9,0,0]].forEach(([x,,z]) => {
-      const h = 0.5 + Math.random() * 0.4;
-      const body = new THREE.Mesh(
-        new THREE.CylinderGeometry(0.05, 0.07, h, 8),
-        new THREE.MeshStandardMaterial({ color: 0xf0e8d0, roughness: 0.9 })
-      );
-      body.position.set(x, -1.1 + h/2, z);
-      body.userData.envProp = true;
-      scene.add(body);
-
-      const flame = new THREE.Mesh(
-        new THREE.SphereGeometry(0.07, 6, 6),
-        new THREE.MeshStandardMaterial({ color: 0xff9900, emissive: new THREE.Color(0xff6600), emissiveIntensity: 2.5, transparent: true, opacity: 0.9 })
-      );
-      flame.position.set(x, -1.1 + h + 0.1, z);
-      flame.userData.envProp = true;
-      flame.userData.isFlame = true;
-      scene.add(flame);
-
-      const cl = new THREE.PointLight(0xff8833, 1.0, 10);
-      cl.position.set(x, -1.1 + h + 0.15, z);
-      cl.userData.envProp = true;
-      cl.userData.isCandle = true;
-      scene.add(cl);
-    });
-
-    // Колонны
-    const pillarMat = new THREE.MeshStandardMaterial({ color: 0x1a100a, roughness: 0.95 });
-    [[-10,0,-10],[-10,0,10],[10,0,-10],[10,0,10]].forEach(([x,,z]) => {
-      const p = new THREE.Mesh(new THREE.CylinderGeometry(0.4, 0.5, 10, 12), pillarMat);
-      p.position.set(x, 3.9, z);
-      p.castShadow = true;
-      p.userData.envProp = true;
-      scene.add(p);
-    });
-  }
-
-  function _bgSpace() {
-    scene.background = new THREE.Color(0x00010f);
-    scene.fog = new THREE.FogExp2(0x00010f, 0.025);
-
-    const n = 3000, pos = new Float32Array(n * 3);
-    for (let i = 0; i < n; i++) {
-      const t = Math.random()*Math.PI*2, p = Math.acos(2*Math.random()-1), r = 25+Math.random()*30;
-      pos[i*3]=r*Math.sin(p)*Math.cos(t); pos[i*3+1]=r*Math.sin(p)*Math.sin(t); pos[i*3+2]=r*Math.cos(p);
-    }
-    const sg = new THREE.BufferGeometry();
-    sg.setAttribute('position', new THREE.BufferAttribute(pos, 3));
-    const stars = new THREE.Points(sg, new THREE.PointsMaterial({ color: 0xffffff, size: 0.14, transparent: true, opacity: 0.95 }));
-    stars.userData.envProp = true;
-    stars.userData.isStars = true;
-    scene.add(stars);
-
-    const floor = new THREE.Mesh(
-      new THREE.PlaneGeometry(60, 60),
-      new THREE.MeshStandardMaterial({ color: 0x020214, roughness: 1.0 })
-    );
-    floor.rotation.x = -Math.PI/2; floor.position.y = -1.1;
-    floor.userData.envProp = true;
-    scene.add(floor);
-  }
-
-  function _bgMinimal() {
-    scene.background = new THREE.Color(0x080808);
-    scene.fog = new THREE.Fog(0x080808, 15, 35);
-
-    const floor = new THREE.Mesh(
-      new THREE.PlaneGeometry(60, 60),
-      new THREE.MeshStandardMaterial({ color: 0x090909, roughness: 0.1, metalness: 0.7 })
-    );
-    floor.rotation.x = -Math.PI/2; floor.position.y = -1.1;
-    floor.receiveShadow = true;
-    floor.userData.envProp = true;
-    scene.add(floor);
-
-    const grid = new THREE.GridHelper(30, 30, 0x1c1c1c, 0x141414);
-    grid.position.y = -1.09;
-    grid.userData.envProp = true;
-    scene.add(grid);
+    scene.background = new THREE.Color(currentBg === 0 ? 0x100806 : currentBg === 1 ? 0x00010f : 0x080808);
+    scene.fog = new THREE.FogExp2(currentBg === 0 ? 0x100806 : currentBg === 1 ? 0x00010f : 0x080808, 0.04);
   }
 
   function cycleBackground() {
-    setBackground((currentBg + 1) % 3);
+    setBackground(currentBg + 1);
     return currentBg;
   }
 
-  // ── Фигуры ────────────────────────────────────────────────────────────────
+  // ===================== ФИГУРЫ =====================
   function squareToWorld(file, rank) {
     return { x: OFF + file * SQ, z: OFF + (7 - rank) * SQ };
   }
 
   function placePiece(type, color, file, rank) {
     const piece = PieceFactory.createPiece(type, color);
-    if (!piece) return null;
     const pos = squareToWorld(file, rank);
     piece.position.set(pos.x, 0.1, pos.z);
     piece.userData.file = file;
@@ -376,13 +216,8 @@ const Scene3D = (() => {
     return piece;
   }
 
-  function removePiece(file, rank) {
-    const toRemove = piecesGroup.children.filter(p => p.userData.file === file && p.userData.rank === rank);
-    toRemove.forEach(p => {
-      piecesGroup.remove(p);
-      if (p.geometry) p.geometry.dispose();
-      if (p.material) p.material.dispose();
-    });
+  function getPieceAt(file, rank) {
+    return piecesGroup.children.find(p => p.userData.file === file && p.userData.rank === rank);
   }
 
   function clearPieces() {
@@ -390,163 +225,100 @@ const Scene3D = (() => {
       const p = piecesGroup.children[0];
       piecesGroup.remove(p);
       if (p.geometry) p.geometry.dispose();
-      if (p.material) p.material.dispose();
+      if (p.material) [].concat(p.material).forEach(m => m.dispose());
     }
   }
 
-  function getPieceAt(file, rank) {
-    return piecesGroup.children.find(p => p.userData.file === file && p.userData.rank === rank);
-  }
+  // ===================== ПЕРЕМЕЩЕНИЕ И ЗАХВАТ =====================
+  function movePiece(fromFile, fromRank, toFile, toRank, isCapture = false, onComplete) {
+    const piece = getPieceAt(fromFile, fromRank);
+    if (!piece) return;
 
-  function animatePiece(file, rank, toFile, toRank, onComplete) {
-    const piece = getPieceAt(file, rank);
-    if (!piece) { if (onComplete) onComplete(); return null; }
+    if (isCapture) {
+      const captured = getPieceAt(toFile, toRank);
+      if (captured) {
+        let t = 0;
+        pendingAnimations.push((delta) => {
+          t += delta * 4;
+          captured.position.y += 0.15;
+          captured.scale.setScalar(Math.max(0.1, 1 - t));
+          if (t >= 1) {
+            piecesGroup.remove(captured);
+            return true;
+          }
+          return false;
+        });
+      }
+    }
+
     const target = squareToWorld(toFile, toRank);
-    const sx = piece.position.x, sz = piece.position.z;
+    const startX = piece.position.x;
+    const startZ = piece.position.z;
     let t = 0;
-    return (delta) => {
-      t = Math.min(t + delta / 0.32, 1);
-      const e = t < 0.5 ? 2*t*t : -1+(4-2*t)*t;
-      piece.position.x = sx + (target.x - sx) * e;
-      piece.position.z = sz + (target.z - sz) * e;
-      piece.position.y = 0.1 + Math.sin(t * Math.PI) * 1.0;
+
+    pendingAnimations.push((delta) => {
+      t = Math.min(t + delta * 2.5, 1);
+      const ease = t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
+
+      piece.position.x = startX + (target.x - startX) * ease;
+      piece.position.z = startZ + (target.z - startZ) * ease;
+      piece.position.y = 0.1 + Math.sin(t * Math.PI) * 1.5;
+
       if (t >= 1) {
-        piece.position.y = 0.1;
+        piece.position.set(target.x, 0.1, target.z);
         piece.userData.file = toFile;
         piece.userData.rank = toRank;
         if (onComplete) onComplete();
         return true;
       }
       return false;
-    };
+    });
   }
 
-  // ── Подсветка клеток ──────────────────────────────────────────────────────
+  // ===================== ПОДСВЕТКА =====================
   function clearHighlights() {
     while (highlightGroup.children.length) {
-      const child = highlightGroup.children[0];
-      if (child.geometry) child.geometry.dispose();
-      if (child.material) child.material.dispose();
-      highlightGroup.remove(child);
+      const c = highlightGroup.children[0];
+      highlightGroup.remove(c);
+      if (c.geometry) c.geometry.dispose();
+      if (c.material) c.material.dispose();
     }
   }
 
   function highlightSquare(file, rank, type = 'move') {
-    const mats = { move: highlightMoveMat, select: highlightSelectMat, capture: highlightCaptureMat, check: highlightCheckMat };
+    const mats = { move: highlightMoveMat, capture: highlightCaptureMat, select: highlightSelectMat };
     const pos = squareToWorld(file, rank);
     const mat = mats[type] || highlightMoveMat;
 
-    const sq = new THREE.Mesh(new THREE.PlaneGeometry(0.92, 0.92), mat);
-    sq.rotation.x = -Math.PI / 2;
-    sq.position.set(pos.x, 0.095, pos.z);
-    sq.userData = { highlight: true, type: type };
-    highlightGroup.add(sq);
-
-    if (type === 'move') {
-      const dot = new THREE.Mesh(new THREE.CircleGeometry(0.16, 16), mat);
-      dot.rotation.x = -Math.PI / 2;
-      dot.position.set(pos.x, 0.105, pos.z);
-      dot.userData = { highlight: true, dot: true };
-      highlightGroup.add(dot);
-    }
+    const hl = new THREE.Mesh(new THREE.PlaneGeometry(0.9, 0.9), mat);
+    hl.rotation.x = -Math.PI / 2;
+    hl.position.set(pos.x, 0.13, pos.z);
+    highlightGroup.add(hl);
   }
 
-  // ── Raycasting (ИСПРАВЛЕНО) ───────────────────────────────────────────────
-  const raycaster = new THREE.Raycaster();
-  const mouse2 = new THREE.Vector2();
-
-  function getClickedSquare(eventOrTouch) {
-    const canvas = renderer.domElement;
-    const rect = canvas.getBoundingClientRect();
-    
-    let clientX, clientY;
-    
-    // Исправленная обработка touch-событий
-    if (eventOrTouch.touches && eventOrTouch.touches.length > 0) {
-      clientX = eventOrTouch.touches[0].clientX;
-      clientY = eventOrTouch.touches[0].clientY;
-    } else if (eventOrTouch.changedTouches && eventOrTouch.changedTouches.length > 0) {
-      clientX = eventOrTouch.changedTouches[0].clientX;
-      clientY = eventOrTouch.changedTouches[0].clientY;
-    } else {
-      clientX = eventOrTouch.clientX;
-      clientY = eventOrTouch.clientY;
-    }
-    
-    if (clientX === undefined || clientY === undefined) return null;
-    
-    mouse2.x =  ((clientX - rect.left) / rect.width)  * 2 - 1;
-    mouse2.y = -((clientY - rect.top)  / rect.height) * 2 + 1;
-    raycaster.setFromCamera(mouse2, camera);
-
-    const squareMeshes = boardGroup.children.filter(c => c.userData.isSquare);
-    const hits = raycaster.intersectObjects(squareMeshes);
-    if (hits.length) {
-      const d = hits[0].object.userData;
-      return { file: d.col, rank: 7 - d.row };
-    }
-
-    const pieceHits = raycaster.intersectObjects(piecesGroup.children, true);
-    if (pieceHits.length) {
-      let obj = pieceHits[0].object;
-      while (obj.parent && !obj.userData.isChessPiece) obj = obj.parent;
-      if (obj.userData.isChessPiece) return { file: obj.userData.file, rank: obj.userData.rank };
-    }
-    return null;
+  function highlightLegalMoves(moves) {
+    clearHighlights();
+    moves.forEach(m => {
+      highlightSquare(m.toFile, m.toRank, m.capture ? 'capture' : 'move');
+    });
   }
 
-  // ── Камера ────────────────────────────────────────────────────────────────
-  function rotateCameraToWhite() { _animCamera(0, 10, 9); }
-  function rotateCameraToBlack() { _animCamera(0, 10, -9); }
-
-  function flipCamera() {
-    if (camera.position.z > 0) rotateCameraToBlack();
-    else rotateCameraToWhite();
-  }
-
-  function _animCamera(tx, ty, tz) {
-    const sx = camera.position.x, sy = camera.position.y, sz = camera.position.z;
-    let t = 0;
-    cameraAnimation = (delta) => {
-      t = Math.min(t + delta / 0.7, 1);
-      const e = t < 0.5 ? 4*t*t*t : (t-1)*(2*t-2)*(2*t-2)+1;
-      camera.position.set(sx+(tx-sx)*e, sy+(ty-sy)*e, sz+(tz-sz)*e);
-      camera.lookAt(0, 0, 0);
-      controls.target.set(0, 0, 0);
-      return t >= 1;
-    };
-  }
-
-  function addAnimation(fn) { if (fn) pendingAnimations.push(fn); }
-
-  // ── Render loop ───────────────────────────────────────────────────────────
-  let clock = 0, lastT = 0;
-
+  // ===================== РЕНДЕР =====================
   function startRender() {
-    lastT = performance.now();
+    let lastT = performance.now();
     const loop = () => {
       requestAnimationFrame(loop);
       const now = performance.now();
-      const dt  = Math.min((now - lastT) / 1000, 0.05);
+      const dt = Math.min((now - lastT) / 1000, 0.05);
       lastT = now;
-      clock += dt;
 
       controls.update();
 
-      if (cameraAnimation) { if (cameraAnimation(dt)) cameraAnimation = null; }
-      pendingAnimations = pendingAnimations.filter(fn => !fn(dt));
+      if (cameraAnimation) {
+        if (cameraAnimation(dt)) cameraAnimation = null;
+      }
 
-      // Анимация свечей и звёзд
-      scene.traverse(o => {
-        if (o.userData.isCandle && o.intensity !== undefined) {
-          o.intensity = 0.8 + Math.sin(clock*3.7+o.position.x)*0.25 + Math.sin(clock*7.1)*0.1;
-        }
-        if (o.userData.isFlame) { 
-          o.position.y += Math.sin(clock*9+o.position.x*3)*0.003; 
-          o.scale.x = 1 + Math.sin(clock*7)*0.12;
-        }
-        if (o.userData.isStars)  o.rotation.y += 0.00006;
-      });
+      pendingAnimations = pendingAnimations.filter(fn => !fn(dt));
 
       renderer.render(scene, camera);
     };
@@ -559,12 +331,26 @@ const Scene3D = (() => {
     renderer.setSize(window.innerWidth, window.innerHeight);
   }
 
+  // ===================== PUBLIC API =====================
   return {
-    init, placePiece, removePiece, clearPieces, getPieceAt,
-    animatePiece, clearHighlights, highlightSquare,
-    squareToWorld, getClickedSquare,
-    flipCamera, rotateCameraToWhite, rotateCameraToBlack,
-    cycleBackground, addAnimation,
+    init,
+    placePiece,
+    movePiece,
+    highlightLegalMoves,
+    highlightSquare,
+    clearHighlights,
+    setupStartingPosition: () => {
+      clearPieces();
+      const back = ['rook', 'knight', 'bishop', 'queen', 'king', 'bishop', 'knight', 'rook'];
+      back.forEach((t, i) => placePiece(t, 'white', i, 0));
+      for (let i = 0; i < 8; i++) placePiece('pawn', 'white', i, 1);
+      back.forEach((t, i) => placePiece(t, 'black', i, 7));
+      for (let i = 0; i < 8; i++) placePiece('pawn', 'black', i, 6);
+    },
+    clearPieces,
+    getPieceAt,
+    squareToWorld,
+    cycleBackground,
     get scene() { return scene; },
     get camera() { return camera; }
   };
