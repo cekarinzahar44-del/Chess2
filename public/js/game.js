@@ -515,15 +515,14 @@ const Game = (() => {
 
     canvas.addEventListener('touchend', (e) => {
       if (touchMoved) return;
-      if (Date.now() - touchStartTime > 500) return; // long press = camera
-
-      e.preventDefault();
-      const sq = Scene3D.getClickedSquare(e.changedTouches[0]);
+      if (Date.now() - touchStartTime > 500) return;
+      const t = e.changedTouches[0];
+      const sq = Scene3D.getClickedSquare(t.clientX, t.clientY);
       if (sq) handleSquareClick(sq.file, sq.rank);
-    });
+    }, { passive: true });
 
     canvas.addEventListener('click', (e) => {
-      const sq = Scene3D.getClickedSquare(e);
+      const sq = Scene3D.getClickedSquare(e.clientX, e.clientY);
       if (sq) handleSquareClick(sq.file, sq.rank);
     });
   }
@@ -541,4 +540,3 @@ const Game = (() => {
     handleSquareClick
   };
 })();
-window.Game = Game;
