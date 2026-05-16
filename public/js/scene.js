@@ -15,20 +15,32 @@ const Scene3D = (() => {
   const SQ = 1.0, OFF = -3.5;
 
   function _camDist() {
-    const a = window.innerWidth / window.innerHeight;
-    if (a < 0.56) return 21;
-    if (a < 0.70) return 19;
-    if (a < 0.85) return 17;
-    if (a < 1.10) return 15;
-    if (a < 1.50) return 14;
-    return 13;
+    const w = window.innerWidth;
+    const h = window.innerHeight;
+    const a = w / h;
+    // Телефон портрет — доска должна помещаться по ширине
+    // Минимальная дистанция чтобы доска (10 units) влезла в FOV=40
+    // dist = (boardSize/2) / tan(FOV_half * aspect_correction)
+    if (a < 0.50) return 26;   // очень узкий iPhone SE
+    if (a < 0.56) return 24;   // iPhone обычный
+    if (a < 0.62) return 22;   // iPhone Plus
+    if (a < 0.70) return 20;   // широкий телефон
+    if (a < 0.85) return 18;   // небольшой планшет портрет
+    if (a < 1.10) return 15;   // планшет портрет
+    if (a < 1.50) return 14;   // планшет альбом
+    return 13;                  // десктоп
   }
 
   function _setCamPos() {
     const d = _camDist();
-    // Угол камеры зависит от соотношения сторон — на телефоне чуть выше
     const a = window.innerWidth / window.innerHeight;
-    const ang = (a < 0.75 ? 58 : 52) * Math.PI / 180;
+    // На телефоне угол выше (смотрим более сверху) чтобы вся доска влезла
+    let angleDeg;
+    if (a < 0.62)      angleDeg = 65;  // телефон узкий — смотрим почти сверху
+    else if (a < 0.75) angleDeg = 62;
+    else if (a < 1.0)  angleDeg = 57;
+    else               angleDeg = 52;  // планшет/десктоп
+    const ang = angleDeg * Math.PI / 180;
     camera.position.set(0, d * Math.sin(ang), d * Math.cos(ang));
     camera.lookAt(0, 0, 0);
   }
@@ -279,8 +291,12 @@ const Scene3D = (() => {
     return null;
   }
 
-  function rotateCameraToWhite(){const d=_camDist(),a=window.innerWidth/window.innerHeight,ang=(a<0.75?58:52)*Math.PI/180;_animCam(0,d*Math.sin(ang),d*Math.cos(ang));}
-  function rotateCameraToBlack(){const d=_camDist(),a=window.innerWidth/window.innerHeight,ang=(a<0.75?58:52)*Math.PI/180;_animCam(0,d*Math.sin(ang),-d*Math.cos(ang));}
+  function _getAngle(){
+    const a=window.innerWidth/window.innerHeight;
+    return (a<0.62?65:a<0.75?62:a<1.0?57:52)*Math.PI/180;
+  }
+  function rotateCameraToWhite(){const d=_camDist(),ang=_getAngle();_animCam(0,d*Math.sin(ang),d*Math.cos(ang));}
+  function rotateCameraToBlack(){const d=_camDist(),ang=_getAngle();_animCam(0,d*Math.sin(ang),-d*Math.cos(ang));}
   function flipCamera(){if(camera.position.z>0)rotateCameraToBlack();else rotateCameraToWhite();}
   function _animCam(tx,ty,tz){
     const sx=camera.position.x,sy=camera.position.y,sz=camera.position.z;let t=0;
