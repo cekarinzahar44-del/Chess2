@@ -1,103 +1,86 @@
-// public/js/app.js
-(async function () {
+// app.js — Professional init
+(async () => {
   'use strict';
 
   const tg = window.Telegram?.WebApp;
   if (tg) {
-    tg.ready();
-    tg.expand();
+    tg.ready(); tg.expand();
     tg.enableClosingConfirmation();
     if (tg.disableVerticalSwipes) tg.disableVerticalSwipes();
+    if (tg.setHeaderColor) tg.setHeaderColor('#050505');
+    if (tg.setBackgroundColor) tg.setBackgroundColor('#050505');
   }
 
-  const loadingText = document.querySelector('.loading-text');
-  const loadingFill = document.querySelector('.loading-fill');
+  const fill  = document.getElementById('load-fill');
+  const label = document.getElementById('load-label');
 
-  function setLoading(text, pct) {
-    if (loadingText) loadingText.textContent = text;
-    if (loadingFill && pct !== undefined) loadingFill.style.width = pct + '%';
+  function setProgress(pct, text) {
+    if (fill)  fill.style.width = pct + '%';
+    if (label) label.textContent = text;
   }
+
   function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
 
   try {
-    setLoading('Проверка движка...', 10);
+    setProgress(10, 'Проверка движка...');
     await sleep(80);
 
-    // ── Шаг 1: убеждаемся что THREE загружен ──────────────────────────────
-    if (typeof THREE === 'undefined') {
-      throw new Error('Three.js не загружен — проверьте интернет-соединение');
-    }
+    if (typeof THREE === 'undefined') throw new Error('Three.js не загружен');
 
-    // ── Шаг 2: инициализируем все аддоны ЗДЕСЬ, когда THREE уже есть ─────
-    if (typeof window.__initOrbitControls === 'function') {
-      window.__initOrbitControls();   // регистрирует THREE.OrbitControls
-    } else {
-      throw new Error('OrbitControls factory not found');
-    }
+    // Init addons AFTER THREE is ready
+    if (typeof window.__initOrbitControls === 'function') window.__initOrbitControls();
+    if (typeof window.__initGLTFLoader    === 'function') window.__initGLTFLoader();
 
-    if (typeof window.__initGLTFLoader === 'function') {
-      window.__initGLTFLoader();      // регистрирует THREE.GLTFLoader
-    }
-
-    setLoading('Создание сцены...', 28);
+    setProgress(25, 'Создание сцены...');
     await sleep(60);
+    Scene3D.init(document.getElementById('chess-canvas'));
 
-    // ── Шаг 3: сцена ──────────────────────────────────────────────────────
-    const canvas = document.getElementById('chess-canvas');
-    if (!canvas) throw new Error('Canvas #chess-canvas не найден');
-    Scene3D.init(canvas);
-    setLoading('Сцена готова', 48);
-
-    // ── Шаг 4: фигуры ─────────────────────────────────────────────────────
-    setLoading('Загрузка фигур...', 62);
+    setProgress(50, 'Загрузка фигур...');
     await PieceFactory.init();
-    setLoading('Фигуры загружены', 78);
 
-    // ── Шаг 5: WebSocket ─────────────────────────────────────────────────
-    setLoading('Подключение...', 90);
+    setProgress(75, 'Подключение...');
     await sleep(100);
     Game.init();
 
-    setLoading('Готово!', 100);
+    setProgress(95, 'Почти готово...');
+    await sleep(300);
+    setProgress(100, 'Готово!');
     await sleep(350);
 
-    // ── Скрыть loading ────────────────────────────────────────────────────
-    const ls = document.getElementById('loading-screen');
-    ls.style.transition = 'opacity 0.5s ease';
+    // Hide loading
+    const ls = document.getElementById('screen-loading');
     ls.style.opacity = '0';
-    await sleep(520);
+    await sleep(500);
     ls.style.display = 'none';
 
     UI.showMenu();
 
+    // Load saved settings
+    const savedBg = localStorage.getItem('chess_bg');
+    if (savedBg !== null) Scene3D.setBackground(parseInt(savedBg));
+
   } catch (err) {
     console.error('Init error:', err);
-    setLoading('Ошибка: ' + err.message);
-    if (loadingFill) {
-      loadingFill.style.background = '#e05555';
-      loadingFill.style.width = '100%';
-    }
+    if (label) { label.textContent = 'Ошибка: ' + err.message; label.style.color='#e03333'; }
+    if (fill)  { fill.style.background = '#e03333'; fill.style.width = '100%'; }
   }
 
-  // ── Back button ───────────────────────────────────────────────────────
+  // Back button
   if (tg) {
     tg.BackButton.onClick(() => {
-      const gameScreen = document.getElementById('game-screen');
-      const modeSelect = document.getElementById('mode-select');
-      if (!gameScreen.classList.contains('hidden')) {
-        tg.showConfirm('Покинуть партию?', ok => {
-          if (ok) { Game.resign(); UI.showMenu(); }
-        });
-      } else if (!modeSelect.classList.contains('hidden')) {
+      const game = document.getElementById('screen-game');
+      const mode = document.getElementById('screen-mode');
+      if (game && !game.classList.contains('hidden')) {
+        tg.showConfirm('Покинуть партию?', ok => { if (ok) { Game.resign(); UI.showMenu(); } });
+      } else if (mode && !mode.classList.contains('hidden')) {
         UI.showMenu();
       }
     });
+
     const observer = new MutationObserver(() => {
-      const onMenu = !document.getElementById('main-menu').classList.contains('hidden');
+      const onMenu = !document.getElementById('screen-menu').classList.contains('hidden');
       if (onMenu) tg.BackButton.hide(); else tg.BackButton.show();
     });
-    observer.observe(document.getElementById('main-menu'), {
-      attributes: true, attributeFilter: ['class']
-    });
+    observer.observe(document.getElementById('screen-menu'), { attributes:true, attributeFilter:['class'] });
   }
 })();
