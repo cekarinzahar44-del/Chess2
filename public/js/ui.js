@@ -94,7 +94,7 @@ const UI = (() => {
     if (selfElo) selfElo.textContent = `ELO ${stats.elo}`;
   }
 
-  function updateCaptured(captured) {
+  function updateCaptured(captured) { return; // hidden in premium UI
     const pieceMap = {
       p:'♟',r:'♜',n:'♞',b:'♝',q:'♛',k:'♚',
       P:'♙',R:'♖',N:'♘',B:'♗',Q:'♕',K:'♔'
@@ -213,7 +213,7 @@ const UI = (() => {
   // ── Background Cycle ───────────────────────────────────────────────────
   const BG_NAMES = ['🏰 Замок', '🌌 Космос', '⬛ Минимализм'];
   function cycleBackground() {
-    currentBgIndex = Scene3D.cycleBackground();
+    currentBgIndex = (currentBgIndex + 1) % 3; Scene3D.cycleBackground();
     const statusEl = document.getElementById('status-text');
     if (statusEl) {
       statusEl.textContent = BG_NAMES[currentBgIndex];
@@ -253,4 +253,3 @@ const UI = (() => {
     cycleBackground, setupMainButton, selectMode
   };
 })();
-window.UI = UI;
