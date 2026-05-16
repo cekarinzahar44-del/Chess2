@@ -2,196 +2,283 @@
 <html lang="ru">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-  <meta name="theme-color" content="#080808">
-  <title>3D Chess</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+  <meta name="theme-color" content="#050505">
+  <title>Chess Master</title>
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
-  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;500;600;700&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/css/style.css">
 </head>
 <body>
 
-<!-- Loading -->
-<div id="loading-screen">
-  <div class="load-inner">
-    <div class="load-crown">♛</div>
-    <h1 class="load-title">3D Chess</h1>
-    <div class="load-bar"><div class="load-fill" id="load-fill"></div></div>
-    <p class="load-text" id="load-text">Инициализация...</p>
-  </div>
-</div>
-
-<!-- Main Menu -->
-<div id="main-menu" class="screen hidden">
-  <div class="menu-glow"></div>
-  <div class="menu-wrap">
-    <div class="logo">
-      <span class="logo-crown">♛</span>
-      <h1 class="logo-title">3D Chess</h1>
-      <p class="logo-sub">Premium Edition</p>
+<div id="screen-loading">
+  <div class="load-content">
+    <div class="load-emblem">
+      <div class="load-ring"></div>
+      <span class="load-symbol">♛</span>
     </div>
-
-    <div class="player-card" id="player-card">
-      <div class="pc-avatar" id="player-avatar">Z</div>
-      <div class="pc-info">
-        <span class="pc-name" id="player-name">Загрузка...</span>
-        <span class="pc-elo" id="player-elo">ELO —</span>
-      </div>
+    <div class="load-brand">
+      <h1>Chess Master</h1>
+      <p>Professional Edition</p>
     </div>
-
-    <div class="menu-btns">
-      <button class="btn btn-gold" onclick="UI.showModeSelect()">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="5 3 19 12 5 21 5 3"/></svg>
-        Новая партия
-      </button>
-      <button class="btn btn-dark" onclick="UI.showLeaderboard()">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>
-        Таблица лидеров
-      </button>
-      <button class="btn btn-dark" onclick="UI.showStats()">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="6"/><path d="M15.477 12.89 17 22l-5-3-5 3 1.523-9.11"/></svg>
-        Моя статистика
-      </button>
+    <div class="load-progress">
+      <div class="load-bar"><div id="load-fill"></div></div>
+      <span id="load-label">Инициализация...</span>
     </div>
   </div>
 </div>
 
-<!-- Mode Select -->
-<div id="mode-select" class="screen hidden">
-  <div class="screen-hdr">
-    <button class="back-btn" onclick="UI.showMenu()">
-      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg>
-    </button>
-    <h2>Режим игры</h2>
-  </div>
-  <div class="mode-cards">
-    <div class="mode-card" onclick="UI.selectMode('ai')">
-      <div class="mode-icon">
-        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
-      </div>
-      <h3>Против ИИ</h3>
-      <p>Тренировка с компьютером</p>
-      <div class="diff-row" id="diff-row">
-        <button class="diff-btn active" data-diff="easy">Лёгкий</button>
-        <button class="diff-btn" data-diff="medium">Средний</button>
-        <button class="diff-btn" data-diff="hard">Сложный</button>
+<div id="screen-menu" class="screen hidden">
+  <div class="menu-bg-anim" id="menu-bg-anim"></div>
+  <div class="menu-content">
+    <div class="menu-top">
+      <div class="brand-mark">
+        <span class="brand-icon">♛</span>
+        <div class="brand-text">
+          <h1>Chess Master</h1>
+          <span>Professional Edition</span>
+        </div>
       </div>
     </div>
-    <div class="mode-card" onclick="UI.selectMode('multiplayer')">
-      <div class="mode-icon">
-        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+    <div class="profile-card" id="profile-card">
+      <div class="profile-photo" id="profile-photo"><span id="profile-initials">?</span></div>
+      <div class="profile-data">
+        <span class="profile-name" id="profile-name">Загрузка...</span>
+        <div class="profile-stats">
+          <span class="stat-elo" id="profile-elo">— ELO</span>
+          <span class="stat-dot">·</span>
+          <span class="stat-rank" id="profile-rank">Новичок</span>
+        </div>
       </div>
-      <h3>Мультиплеер</h3>
-      <p>Быстрый матчмейкинг</p>
-      <div class="mode-badge">Рейтинговый</div>
+      <div class="profile-badge" id="profile-badge">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+      </div>
+    </div>
+    <div class="menu-actions">
+      <button class="action-btn action-btn--primary" onclick="UI.showModeSelect()">
+        <div class="action-btn-icon"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="5 3 19 12 5 21 5 3"/></svg></div>
+        <div class="action-btn-text"><span class="action-title">Играть</span><span class="action-sub">Выбор режима и соперника</span></div>
+        <svg class="action-arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg>
+      </button>
+      <div class="menu-grid">
+        <button class="grid-btn" onclick="UI.showLeaderboard()">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>
+          <span>Рейтинг</span>
+        </button>
+        <button class="grid-btn" onclick="UI.showAchievements()">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="8" r="6"/><path d="M15.477 12.89 17 22l-5-3-5 3 1.523-9.11"/></svg>
+          <span>Трофеи</span>
+        </button>
+        <button class="grid-btn" onclick="UI.showHistory()">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+          <span>История</span>
+        </button>
+        <button class="grid-btn" onclick="UI.showSettings()">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+          <span>Настройки</span>
+        </button>
+      </div>
+    </div>
+    <div class="menu-footer">
+      <span class="online-badge"><span class="online-dot"></span><span id="online-count">0 онлайн</span></span>
     </div>
   </div>
 </div>
 
-<!-- Game Screen -->
-<div id="game-screen" class="screen hidden">
+<div id="screen-mode" class="screen hidden">
+  <div class="sheet-header">
+    <button class="icon-btn" onclick="UI.showMenu()"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><polyline points="15 18 9 12 15 6"/></svg></button>
+    <h2>Новая партия</h2>
+    <div style="width:36px"></div>
+  </div>
+  <div class="sheet-body">
+    <div class="mode-section">
+      <label class="section-label">Против компьютера</label>
+      <div class="ai-card" onclick="UI.startAiGame()">
+        <div class="ai-icon"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg></div>
+        <div class="ai-info"><span class="ai-name">Stockfish AI</span><span class="ai-desc">Настраиваемый уровень</span></div>
+        <div class="ai-elo-badge" id="ai-elo-badge">ELO 800</div>
+      </div>
+      <div class="diff-row">
+        <button class="diff-chip active" data-diff="1" data-elo="800" onclick="UI.setDifficulty(this)">Начинающий</button>
+        <button class="diff-chip" data-diff="2" data-elo="1200" onclick="UI.setDifficulty(this)">Любитель</button>
+        <button class="diff-chip" data-diff="3" data-elo="1600" onclick="UI.setDifficulty(this)">Клубный</button>
+        <button class="diff-chip" data-diff="4" data-elo="2000" onclick="UI.setDifficulty(this)">Мастер</button>
+      </div>
+    </div>
+    <div class="mode-section">
+      <label class="section-label">Мультиплеер</label>
+      <div class="mp-cards">
+        <div class="mp-card" onclick="UI.startMultiplayer('blitz')">
+          <div class="mp-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg></div>
+          <div class="mp-info"><span class="mp-name">Блиц 3+2</span><span class="mp-sub">Быстрый контроль</span></div>
+        </div>
+        <div class="mp-card" onclick="UI.startMultiplayer('rapid')">
+          <div class="mp-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></div>
+          <div class="mp-info"><span class="mp-name">Рапид 10+0</span><span class="mp-sub">Рейтинговая</span></div>
+        </div>
+        <div class="mp-card" onclick="UI.startMultiplayer('classical')">
+          <div class="mp-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg></div>
+          <div class="mp-info"><span class="mp-name">Классика 30+0</span><span class="mp-sub">Серьёзная игра</span></div>
+        </div>
+      </div>
+    </div>
+    <div class="mode-section">
+      <label class="section-label">Играть за</label>
+      <div class="color-row">
+        <button class="color-btn active" data-color="random" onclick="UI.setColor(this)"><div class="cb-split"><div class="cb-w"></div><div class="cb-b"></div></div><span>Случайно</span></button>
+        <button class="color-btn" data-color="white" onclick="UI.setColor(this)"><div class="cb-solid cb-solid--w">♔</div><span>Белые</span></button>
+        <button class="color-btn" data-color="black" onclick="UI.setColor(this)"><div class="cb-solid cb-solid--b">♚</div><span>Чёрные</span></button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="screen-game" class="screen hidden">
   <canvas id="chess-canvas"></canvas>
-
-  <!-- Opponent HUD -->
-  <div class="hud hud-top">
-    <div class="hud-player">
-      <div class="hud-av hud-av--dark">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/></svg>
+  <div class="game-topbar">
+    <div class="player-hud" id="hud-opp">
+      <div class="phud-av phud-av--opp" id="opp-av">?</div>
+      <div class="phud-info">
+        <span class="phud-name" id="opp-name">Соперник</span>
+        <div class="phud-sub"><span class="phud-elo" id="opp-elo">—</span><span class="phud-cap" id="opp-cap"></span></div>
       </div>
-      <div class="hud-info">
-        <span class="hud-name" id="opponent-name">Соперник</span>
-        <span class="hud-elo-txt" id="opponent-elo">ELO —</span>
-      </div>
+      <div class="phud-clock" id="clock-opp">10:00</div>
     </div>
-    <div class="hud-clock" id="clock-black">10:00</div>
   </div>
-
-  <!-- Status -->
-  <div class="status-wrap" id="status-wrap">
-    <span id="status-text">Ваш ход</span>
+  <div class="eval-bar" id="eval-bar"><div class="eval-fill" id="eval-fill" style="height:50%"></div></div>
+  <div class="move-indicator hidden" id="move-ind">
+    <div class="mi-dot" id="mi-dot"></div>
+    <span id="mi-text">Ваш ход</span>
   </div>
-
-  <!-- Self HUD -->
-  <div class="hud hud-bot">
-    <div class="hud-player">
-      <div class="hud-av hud-av--light">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg>
+  <div class="game-botbar">
+    <div class="player-hud" id="hud-self">
+      <div class="phud-av phud-av--self" id="self-av">Z</div>
+      <div class="phud-info">
+        <span class="phud-name" id="self-name">Вы</span>
+        <div class="phud-sub"><span class="phud-elo" id="self-elo">—</span><span class="phud-cap" id="self-cap"></span></div>
       </div>
-      <div class="hud-info">
-        <span class="hud-name" id="self-name">Вы</span>
-        <span class="hud-elo-txt" id="self-elo">ELO —</span>
-      </div>
+      <div class="phud-clock phud-clock--act" id="clock-self">10:00</div>
     </div>
-    <div class="hud-clock active" id="clock-white">10:00</div>
-    <div class="ctrl-row">
-      <button class="ctrl-btn" onclick="Scene3D.flipCamera()" title="Повернуть">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
-      </button>
-      <button class="ctrl-btn" onclick="UI.cycleBackground()" title="Фон">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M12 1v4M12 19v4M4.22 4.22l2.83 2.83M16.95 16.95l2.83 2.83M1 12h4M19 12h4M4.22 19.78l2.83-2.83M16.95 7.05l2.83-2.83"/></svg>
-      </button>
-      <button class="ctrl-btn" onclick="Game.offerDraw()" title="Ничья">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
-      </button>
-      <button class="ctrl-btn ctrl-btn--danger" onclick="UI.confirmResign()" title="Сдаться">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-      </button>
+    <div class="game-toolbar">
+      <button class="tool-btn" onclick="Scene3D.flipCamera()"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="17 1 21 5 17 9"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><polyline points="7 23 3 19 7 15"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg></button>
+      <button class="tool-btn" onclick="UI.cycleTheme()"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/></svg></button>
+      <button class="tool-btn" onclick="UI.toggleMoveList()"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg></button>
+      <button class="tool-btn" onclick="UI.showGameMenu()"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></svg></button>
+    </div>
+  </div>
+  <div class="move-panel hidden" id="move-panel">
+    <div class="mp-hdr"><span>Партия</span><button onclick="UI.toggleMoveList()"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button></div>
+    <div class="move-list" id="move-list"></div>
+  </div>
+</div>
+
+<!-- OVERLAYS -->
+<div id="modal-game-menu" class="overlay hidden" onclick="UI.closeOverlay('modal-game-menu')">
+  <div class="bottom-sheet" onclick="event.stopPropagation()">
+    <div class="bs-handle"></div>
+    <div class="bs-body">
+      <button class="bs-item" onclick="Game.offerDraw();UI.closeOverlay('modal-game-menu')"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>Предложить ничью</button>
+      <button class="bs-item bs-item--danger" onclick="UI.confirmResign()"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>Сдаться</button>
+      <button class="bs-item" onclick="UI.closeOverlay('modal-game-menu')"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>Закрыть</button>
     </div>
   </div>
 </div>
 
-<!-- Modals -->
-<div id="game-over-modal" class="modal hidden">
-  <div class="modal-box">
-    <div class="modal-icon" id="result-icon">
-      <svg width="52" height="52" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
-    </div>
-    <h2 id="result-title">Победа</h2>
-    <p id="result-desc">Мат в 28 ходов</p>
-    <div class="elo-change" id="elo-change">+15 ELO</div>
-    <div class="modal-btns">
-      <button class="btn btn-gold" onclick="UI.playAgain()">Ещё раз</button>
-      <button class="btn btn-dark" onclick="UI.showMenu()">В меню</button>
-    </div>
+<div id="modal-waiting" class="overlay hidden">
+  <div class="modal-card" onclick="event.stopPropagation()">
+    <div class="search-anim"><div class="sa-ring"></div><div class="sa-ring sa-ring--2"></div><span class="sa-piece">♟</span></div>
+    <h3>Поиск соперника</h3>
+    <p id="search-info">Подбираем по рейтингу...</p>
+    <div class="search-time" id="search-time">0:00</div>
+    <button class="btn-ghost" onclick="Game.cancelSearch();UI.closeOverlay('modal-waiting')">Отмена</button>
   </div>
 </div>
 
-<div id="waiting-modal" class="modal hidden">
-  <div class="modal-box">
-    <div class="spin-ring"></div>
-    <h2>Поиск соперника</h2>
-    <p>Ожидаем подключения...</p>
-    <button class="btn btn-dark" style="margin-top:20px" onclick="Game.cancelSearch()">Отмена</button>
-  </div>
-</div>
-
-<div id="leaderboard-modal" class="modal hidden">
-  <div class="modal-box modal-box--wide">
-    <div class="modal-hdr">
-      <h2>Лидеры</h2>
-      <button class="close-btn" onclick="UI.closeModal('leaderboard-modal')">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-      </button>
-    </div>
-    <div id="leaderboard-list" class="lb-list"></div>
-  </div>
-</div>
-
-<div id="draw-modal" class="modal hidden">
-  <div class="modal-box">
-    <h2>Предложение ничьей</h2>
+<div id="modal-draw" class="overlay hidden">
+  <div class="modal-card" onclick="event.stopPropagation()">
+    <div class="modal-icon-w"><svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="var(--gold)" stroke-width="1.5"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg></div>
+    <h3>Ничья?</h3>
     <p>Соперник предлагает ничью</p>
-    <div class="modal-btns">
-      <button class="btn btn-gold" onclick="Game.acceptDraw()">Принять</button>
-      <button class="btn btn-dark" onclick="UI.closeModal('draw-modal')">Отклонить</button>
+    <div class="btn-row">
+      <button class="btn-primary" onclick="Game.acceptDraw();UI.closeOverlay('modal-draw')">Принять</button>
+      <button class="btn-ghost" onclick="UI.closeOverlay('modal-draw')">Отклонить</button>
     </div>
   </div>
 </div>
 
-<div id="promotion-modal" class="modal hidden">
-  <div class="modal-box">
-    <h2>Выберите фигуру</h2>
-    <div class="promo-row" id="promotion-pieces"></div>
+<div id="modal-result" class="overlay hidden">
+  <div class="result-card" onclick="event.stopPropagation()">
+    <div class="rc-top" id="rc-top">
+      <div class="rc-icon" id="rc-icon"></div>
+      <h2 id="rc-title">Победа!</h2>
+      <p id="rc-reason">Мат</p>
+    </div>
+    <div class="rc-stats">
+      <div class="rcs"><span>ELO</span><strong id="rc-elo">+15</strong></div>
+      <div class="rcs"><span>Точность</span><strong id="rc-acc">—%</strong></div>
+      <div class="rcs"><span>Ходов</span><strong id="rc-moves">—</strong></div>
+    </div>
+    <div class="btn-row">
+      <button class="btn-primary" onclick="UI.rematch()">Реванш</button>
+      <button class="btn-secondary" onclick="UI.showMenu()">В меню</button>
+    </div>
+  </div>
+</div>
+
+<div id="modal-promotion" class="overlay hidden">
+  <div class="modal-card promo-card" onclick="event.stopPropagation()">
+    <h3>Превращение пешки</h3>
+    <div class="promo-grid" id="promo-grid"></div>
+  </div>
+</div>
+
+<div id="modal-leaderboard" class="overlay hidden" onclick="UI.closeOverlay('modal-leaderboard')">
+  <div class="side-panel" onclick="event.stopPropagation()">
+    <div class="sp-hdr"><h2>Рейтинг</h2><button class="icon-btn" onclick="UI.closeOverlay('modal-leaderboard')"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button></div>
+    <div id="lb-body" class="sp-body"></div>
+  </div>
+</div>
+
+<div id="modal-achievements" class="overlay hidden" onclick="UI.closeOverlay('modal-achievements')">
+  <div class="side-panel" onclick="event.stopPropagation()">
+    <div class="sp-hdr"><h2>Достижения</h2><button class="icon-btn" onclick="UI.closeOverlay('modal-achievements')"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button></div>
+    <div id="ach-body" class="sp-body"></div>
+  </div>
+</div>
+
+<div id="modal-history" class="overlay hidden" onclick="UI.closeOverlay('modal-history')">
+  <div class="side-panel" onclick="event.stopPropagation()">
+    <div class="sp-hdr"><h2>История партий</h2><button class="icon-btn" onclick="UI.closeOverlay('modal-history')"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button></div>
+    <div id="hist-body" class="sp-body"></div>
+  </div>
+</div>
+
+<div id="modal-settings" class="overlay hidden" onclick="UI.closeOverlay('modal-settings')">
+  <div class="side-panel" onclick="event.stopPropagation()">
+    <div class="sp-hdr"><h2>Настройки</h2><button class="icon-btn" onclick="UI.closeOverlay('modal-settings')"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button></div>
+    <div class="sp-body settings-body">
+      <div class="sg"><label class="sg-lbl">Тема доски</label>
+        <div class="board-themes">
+          <div class="bt" data-theme="classic" onclick="UI.setBoardTheme(this)"><div class="bt-prev bt-classic"></div><span>Классика</span></div>
+          <div class="bt" data-theme="midnight" onclick="UI.setBoardTheme(this)"><div class="bt-prev bt-midnight"></div><span>Ночь</span></div>
+          <div class="bt" data-theme="forest" onclick="UI.setBoardTheme(this)"><div class="bt-prev bt-forest"></div><span>Лес</span></div>
+          <div class="bt" data-theme="ice" onclick="UI.setBoardTheme(this)"><div class="bt-prev bt-ice"></div><span>Лёд</span></div>
+        </div>
+      </div>
+      <div class="sg"><label class="sg-lbl">Фон</label>
+        <div class="bg-themes">
+          <div class="bgt active" data-bg="0" onclick="UI.setBgTheme(this)"><div class="bgt-p" style="background:linear-gradient(135deg,#1a0a05,#3a1510)"></div><span>Замок</span></div>
+          <div class="bgt" data-bg="1" onclick="UI.setBgTheme(this)"><div class="bgt-p" style="background:linear-gradient(135deg,#00000f,#050525)"></div><span>Космос</span></div>
+          <div class="bgt" data-bg="2" onclick="UI.setBgTheme(this)"><div class="bgt-p" style="background:linear-gradient(135deg,#070707,#111)"></div><span>Минимал</span></div>
+        </div>
+      </div>
+      <div class="sg"><label class="sg-lbl">Прочее</label>
+        <div class="toggle-row"><span>Подсказки ходов</span><button class="toggle active" id="tog-hints" onclick="UI.toggleSetting(this,'hints')"></button></div>
+        <div class="toggle-row"><span>Оценка позиции</span><button class="toggle active" id="tog-eval" onclick="UI.toggleSetting(this,'eval')"></button></div>
+        <div class="toggle-row"><span>Анимация фигур</span><button class="toggle active" id="tog-anim" onclick="UI.toggleSetting(this,'anim')"></button></div>
+      </div>
+    </div>
   </div>
 </div>
 
@@ -203,5 +290,3 @@
 <script src="/js/game.js"></script>
 <script src="/js/ui.js"></script>
 <script src="/js/app.js"></script>
-</body>
-</html>
