@@ -1,542 +1,373 @@
-// public/js/game.js
+// game.js — Professional game logic with clocks, eval, move history
+
 const Game = (() => {
-  let ws = null;
-  let wsId = null;
-  let gameId = null;
-  let myColor = null;
+  let ws = null, wsId = null;
+  let gameId = null, myColor = null;
   let currentFen = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1';
-  let selectedSquare = null;
-  let legalMoves = [];
-  let isMyTurn = false;
-  let currentMode = null;
-  let currentDifficulty = 'medium';
-  let gameActive = false;
+  let selectedSquare = null, legalMoves = [];
+  let isMyTurn = false, gameActive = false;
+  let currentMode = null, currentDifficulty = 'medium', timeControl = 'rapid';
   let promotionPending = null;
   let reconnectTimer = null;
-  let pingInterval = null;
-  let clockWhite = 600, clockBlack = 600;
-  let clockInterval = null;
-  let capturedPieces = { w: [], b: [] };
+  let moveHistory = [];
+  let moveCount = 0;
+  let capturedByWhite = [], capturedByBlack = [];
 
-  const PIECE_SYMBOLS = {
-    wk:'♔',wq:'♕',wr:'♖',wb:'♗',wn:'♘',wp:'♙',
-    bk:'♚',bq:'♛',br:'♜',bb:'♝',bn:'♞',bp:'♟'
-  };
+  // Clocks
+  let clockWhite = 600, clockBlack = 600, clockInterval = null;
+  const TIME_CONTROLS = { blitz: 180, rapid: 600, classical: 1800 };
 
-  // ── WebSocket ────────────────────────────────────────────────────────
+  // ── WebSocket ──────────────────────────────────────────────────────────
   function connect() {
     const proto = location.protocol === 'https:' ? 'wss:' : 'ws:';
-    const url = `${proto}//${location.host}/ws`;
-
-    ws = new WebSocket(url);
-
+    ws = new WebSocket(`${proto}//${location.host}/ws`);
     ws.onopen = () => {
-      console.log('WS connected');
-      if (reconnectTimer) { clearTimeout(reconnectTimer); reconnectTimer = null; }
-      // Auth with Telegram data
+      clearTimeout(reconnectTimer);
       const user = window.Telegram?.WebApp?.initDataUnsafe?.user;
-      if (user) {
-        send({ type: 'auth', telegramId: user.id, username: user.username, firstName: user.first_name });
-      }
+      if (user) _send({ type:'auth', telegramId:user.id, username:user.username, firstName:user.first_name });
     };
-
-    ws.onmessage = (e) => {
-      try { handleMessage(JSON.parse(e.data)); }
-      catch(err) { console.error('WS parse error', err); }
-    };
-
-    ws.onclose = () => {
-      console.log('WS closed, reconnecting...');
-      reconnectTimer = setTimeout(connect, 3000);
-    };
-
-    ws.onerror = (e) => console.error('WS error', e);
+    ws.onmessage = e => { try { _handle(JSON.parse(e.data)); } catch(err) { console.error(err); } };
+    ws.onclose   = () => { reconnectTimer = setTimeout(connect, 3000); };
+    ws.onerror   = e => console.error('WS', e);
   }
 
-  function send(msg) {
-    if (ws && ws.readyState === WebSocket.OPEN) {
-      ws.send(JSON.stringify(msg));
-    }
+  function _send(msg) {
+    if (ws?.readyState === WebSocket.OPEN) ws.send(JSON.stringify(msg));
   }
 
-  // ── Message Handler ───────────────────────────────────────────────────
-  function handleMessage(msg) {
+  // ── Message Handler ────────────────────────────────────────────────────
+  function _handle(msg) {
     switch (msg.type) {
-      case 'connected':
-        wsId = msg.wsId;
-        break;
-
-      case 'auth_ok':
-        UI.updatePlayerStats(msg.stats);
-        break;
-
-      case 'waiting':
-        UI.showWaitingModal();
-        break;
-
-      case 'game_start':
-        onGameStart(msg);
-        break;
-
-      case 'move_made':
-        onMoveMade(msg);
-        break;
-
-      case 'legal_moves':
-        onLegalMoves(msg);
-        break;
-
-      case 'game_over':
-        onGameOver(msg);
-        break;
-
-      case 'draw_offer':
-        UI.showDrawOffer();
-        break;
-
+      case 'connected':   wsId = msg.wsId; break;
+      case 'auth_ok':     UI.updateProfile(msg.stats); break;
+      case 'waiting':     UI.showWaiting(); break;
+      case 'game_start':  _onGameStart(msg); break;
+      case 'move_made':   _onMoveMade(msg); break;
+      case 'legal_moves': _onLegalMoves(msg); break;
+      case 'game_over':   _onGameOver(msg); break;
+      case 'draw_offer':  UI.showDrawOffer(); break;
+      case 'stats':       UI.updateProfile(msg.stats); break;
+      case 'leaderboard': UI.displayLeaderboard(msg.data); break;
       case 'opponent_disconnected':
-        UI.showStatus('Соперник отключился', 'warning');
+        UI.toast('Соперник отключился', 'Ожидаем переподключения...');
         break;
-
-      case 'error':
-      case 'move_error':
-        console.warn('Server error:', msg.message);
-        UI.showStatus(msg.message, 'error');
-        break;
-
-      case 'stats':
-        UI.updatePlayerStats(msg.stats);
-        break;
-
-      case 'leaderboard':
-        UI.displayLeaderboard(msg.data);
-        break;
-
       case 'search_cancelled':
-        UI.closeModal('waiting-modal');
+        UI.closeOverlay('modal-waiting');
         break;
     }
   }
 
-  // ── Game Start ────────────────────────────────────────────────────────
-  function onGameStart(msg) {
+  // ── Game Start ─────────────────────────────────────────────────────────
+  function _onGameStart(msg) {
     gameId = msg.gameId;
     myColor = msg.color;
     currentMode = msg.mode;
-    currentDifficulty = msg.difficulty;
     gameActive = true;
-    capturedPieces = { w: [], b: [] };
+    moveHistory = [];
+    moveCount = 0;
+    capturedByWhite = [];
+    capturedByBlack = [];
     currentFen = msg.fen;
 
-    UI.closeModal('waiting-modal');
+    UI.hideWaiting();
     UI.showGameScreen();
-
-    // Set up board orientation
-    if (myColor === 'white') {
-      Scene3D.rotateCameraToWhite();
-    } else {
-      Scene3D.rotateCameraToBlack();
-    }
-
-    // Draw initial position
-    drawPositionFromFen(msg.fen);
-
-    // Update HUD
+    UI.clearMoves();
     UI.setOpponent(msg.opponent);
-    UI.setMyColor(myColor);
+
+    // Camera orientation
+    if (myColor === 'white') Scene3D.rotateCameraToWhite();
+    else Scene3D.rotateCameraToBlack();
+
+    // Draw position
+    _drawFen(msg.fen);
+
+    // Clocks
+    const duration = TIME_CONTROLS[timeControl] || 600;
+    clockWhite = clockBlack = duration;
+    _startClock();
 
     // Turn
-    isMyTurn = (myColor === 'white');
-    updateTurnUI();
-
-    // Start clock
-    startClock();
+    isMyTurn = myColor === 'white';
+    UI.setTurn(isMyTurn, false);
+    UI.setActivePlayer(isMyTurn ? 'self' : 'opp');
   }
 
-  // ── Move Made ─────────────────────────────────────────────────────────
-  function onMoveMade(msg) {
-    const { move, fen, isCheck, isCheckmate, turn, isAi } = msg;
+  // ── Move Made ──────────────────────────────────────────────────────────
+  function _onMoveMade(msg) {
+    const { move, fen, isCheck, isCheckmate, isDraw, isGameOver, turn, isAi } = msg;
 
-    // Clear selection
     selectedSquare = null;
     legalMoves = [];
     Scene3D.clearHighlights();
 
-    // Animate piece move
-    const fromFile = fileFromAlg(move.from);
-    const fromRank = rankFromAlg(move.from);
-    const toFile   = fileFromAlg(move.to);
-    const toRank   = rankFromAlg(move.to);
+    const fromFile = _file(move.from), fromRank = _rank(move.from);
+    const toFile   = _file(move.to),   toRank   = _rank(move.to);
 
-    // Handle capture
+    // Remove captured piece
     if (move.captured) {
-      Scene3D.removePiece(toFile, toRank);
-      trackCapture(move.captured, move.color === 'w' ? 'w' : 'b');
+      if (move.flags?.includes('e')) {
+        const epRank = move.color === 'w' ? toRank - 1 : toRank + 1;
+        Scene3D.removePiece(toFile, epRank);
+      } else {
+        Scene3D.removePiece(toFile, toRank);
+      }
+      // Track captures
+      if (move.color === 'w') capturedByWhite.push(move.captured);
+      else capturedByBlack.push(move.captured);
+      UI.updateCaptured('self', move.color === (myColor==='white'?'w':'b') ? capturedByWhite : capturedByBlack);
+      UI.updateCaptured('opp',  move.color === (myColor==='white'?'w':'b') ? capturedByBlack : capturedByWhite);
     }
 
-    // Animate
-    const animFn = Scene3D.animatePiece(fromFile, fromRank, toFile, toRank, () => {
-      // Handle special moves after animation
-      if (move.flags) {
-        // En passant
-        if (move.flags.includes('e')) {
-          const epRank = move.color === 'w' ? toRank - 1 : toRank + 1;
-          Scene3D.removePiece(toFile, epRank);
-        }
-        // Castling
-        if (move.flags.includes('k') || move.flags.includes('q')) {
-          handleCastlingAnimation(move);
-        }
-        // Promotion
-        if (move.flags.includes('p')) {
-          Scene3D.removePiece(toFile, toRank);
-          Scene3D.placePiece(move.promotion || 'q', move.color, toFile, toRank);
-        }
-      }
-      currentFen = fen;
-    });
+    // Animate move
+    const settings = UI.getSettings();
+    const anim = settings.anim !== false
+      ? Scene3D.animatePiece(fromFile, fromRank, toFile, toRank, () => _afterMove(move, fen))
+      : null;
+    if (anim) Scene3D.addAnimation(anim);
+    else _afterMove(move, fen);
 
-    if (animFn) Scene3D.addAnimation(animFn);
+    // Castling rook
+    if (move.flags?.includes('k') || move.flags?.includes('q')) {
+      const rank = move.color === 'w' ? 0 : 7;
+      const isKs = move.flags.includes('k');
+      const ra   = Scene3D.animatePiece(isKs?7:0, rank, isKs?5:3, rank, null);
+      if (ra) Scene3D.addAnimation(ra);
+    }
+
+    // Record move
+    moveCount++;
+    const halfMove = move.color === 'w' ? Math.ceil(moveCount/2) : Math.ceil(moveCount/2);
+    moveHistory.push(move.san);
+    if (move.color === 'w') UI.addMove(Math.ceil(moveCount/2), move.san, undefined);
+    else UI.addMove(Math.ceil(moveCount/2), undefined, move.san);
 
     // Check highlight
     if (isCheck) {
-      const kingPos = findKing(fen, turn);
-      if (kingPos) Scene3D.highlightSquare(kingPos.file, kingPos.rank, 'check');
+      const kPos = _findKing(fen, turn);
+      if (kPos) Scene3D.highlightSquare(kPos.file, kPos.rank, 'check');
     }
 
-    // Update clock
-    updateClock(turn);
+    currentFen = fen;
+    isMyTurn = turn === (myColor === 'white' ? 'w' : 'b');
+    UI.setTurn(isMyTurn, isCheck);
+    UI.setActivePlayer(isMyTurn ? 'self' : 'opp');
+    _updateClock(turn);
 
-    // Update turn
-    isMyTurn = (turn === 'w') ? myColor === 'white' : myColor === 'black';
-    updateTurnUI();
+    // Mock eval update
+    if (settings.eval !== false) {
+      const mockEval = (Math.random() - 0.48) * 4;
+      UI.updateEval(myColor === 'white' ? mockEval : -mockEval);
+    }
 
-    // Update captured display
-    UI.updateCaptured(capturedPieces);
+    // Haptic
+    if (!isAi) window.Telegram?.WebApp?.HapticFeedback?.impactOccurred('light');
   }
 
-  function handleCastlingAnimation(move) {
-    const isKingside = move.flags.includes('k');
-    const rank = move.color === 'w' ? 0 : 7;
-    const rookFromFile = isKingside ? 7 : 0;
-    const rookToFile   = isKingside ? 5 : 3;
-    const animFn = Scene3D.animatePiece(rookFromFile, rank, rookToFile, rank, null);
-    if (animFn) Scene3D.addAnimation(animFn);
+  function _afterMove(move, fen) {
+    // Promotion
+    if (move.flags?.includes('p')) {
+      Scene3D.removePiece(_file(move.to), _rank(move.to));
+      Scene3D.placePiece(move.promotion || 'q', move.color, _file(move.to), _rank(move.to));
+    }
   }
 
-  function onLegalMoves(msg) {
+  function _onLegalMoves(msg) {
     legalMoves = msg.moves;
     Scene3D.clearHighlights();
-    if (selectedSquare) {
-      Scene3D.highlightSquare(selectedSquare.file, selectedSquare.rank, 'select');
-    }
+    if (selectedSquare) Scene3D.highlightSquare(selectedSquare.file, selectedSquare.rank, 'select');
     legalMoves.forEach(m => {
-      const f = fileFromAlg(m.to);
-      const r = rankFromAlg(m.to);
       const type = m.captured ? 'capture' : 'move';
-      Scene3D.highlightSquare(f, r, type);
+      Scene3D.highlightSquare(_file(m.to), _rank(m.to), type);
     });
   }
 
-  // ── Game Over ─────────────────────────────────────────────────────────
-  function onGameOver(msg) {
+  // ── Game Over ──────────────────────────────────────────────────────────
+  function _onGameOver(msg) {
     gameActive = false;
-    stopClock();
+    _stopClock();
     Scene3D.clearHighlights();
 
-    let title, icon, desc;
-    if (msg.winner === myColor) {
-      title = 'Победа!'; icon = '👑'; desc = getReasonText(msg.reason);
-    } else if (msg.winner === null || msg.winner === undefined) {
-      title = 'Ничья'; icon = '🤝'; desc = getReasonText(msg.reason);
-    } else {
-      title = 'Поражение'; icon = '💀'; desc = getReasonText(msg.reason);
+    let outcome;
+    if (msg.winner === null || msg.winner === undefined) outcome = 'draw';
+    else outcome = msg.winner === myColor ? 'win' : 'loss';
+
+    const eloChange = outcome === 'win' ? 15 : outcome === 'loss' ? -10 : 3;
+
+    // Achievements
+    if (outcome === 'win') {
+      UI.unlockAchievement('first_win');
+      if (moveHistory.length < 40) UI.unlockAchievement('fast_win');
     }
 
-    setTimeout(() => UI.showGameOver(title, icon, desc, msg.winner), 1000);
+    // Save history
+    const user = window.Telegram?.WebApp?.initDataUnsafe?.user;
+    UI.saveGameToHistory({
+      outcome, reason: msg.reason, eloChange,
+      moves: moveHistory.length,
+      opponent: document.getElementById('opp-name')?.textContent || 'Соперник',
+      mode: currentMode
+    });
+
+    setTimeout(() => {
+      UI.showResult({ outcome, reason: msg.reason, eloChange, moves: moveHistory.length });
+    }, 800);
   }
 
-  function getReasonText(reason) {
-    const reasons = {
-      checkmate: 'Мат',
-      resignation: 'Соперник сдался',
-      draw_agreement: 'Ничья по соглашению',
-      stalemate: 'Пат',
-      insufficient_material: 'Недостаточно материала',
-      fifty_moves: 'Правило 50 ходов',
-      repetition: 'Троекратное повторение'
-    };
-    return reasons[reason] || reason || '';
-  }
-
-  // ── Click Handler ─────────────────────────────────────────────────────
+  // ── Click Handler ──────────────────────────────────────────────────────
   function handleSquareClick(file, rank) {
-    if (!gameActive || !isMyTurn) return;
+    if (!gameActive || !isMyTurn || promotionPending) return;
 
-    // Promotion pending
-    if (promotionPending) return;
+    const legal = legalMoves.find(m => _file(m.to)===file && _rank(m.to)===rank);
 
-    const clickedSquare = { file, rank };
-
-    // If square with legal move — make the move
-    const legalMove = legalMoves.find(m =>
-      fileFromAlg(m.to) === file && rankFromAlg(m.to) === rank
-    );
-
-    if (legalMove && selectedSquare) {
-      // Check for promotion
-      if (legalMove.piece === 'p' && (rank === 7 || rank === 0)) {
-        showPromotion(selectedSquare, clickedSquare);
+    if (legal && selectedSquare) {
+      // Check promotion
+      if (legal.piece === 'p' && (rank === 7 || rank === 0)) {
+        promotionPending = { from: selectedSquare, to: { file, rank } };
+        UI.showPromotion(myColor === 'white' ? 'w' : 'b', (promo) => {
+          _send({ type:'move', move:{ from:_alg(promotionPending.from.file, promotionPending.from.rank), to:_alg(file,rank), promotion:promo }, gameId });
+          promotionPending = null;
+        });
         return;
       }
-      makeMove(selectedSquare, clickedSquare);
-      selectedSquare = null;
-      legalMoves = [];
+      _send({ type:'move', move:{ from:_alg(selectedSquare.file,selectedSquare.rank), to:_alg(file,rank) }, gameId });
+      selectedSquare = null; legalMoves = [];
       Scene3D.clearHighlights();
       return;
     }
 
-    // Select piece
-    const fenPiece = getPieceOnSquare(currentFen, file, rank);
-    if (fenPiece && fenPiece.color === (myColor === 'white' ? 'w' : 'b')) {
-      selectedSquare = clickedSquare;
-      send({ type: 'get_moves', square: algFromCoords(file, rank), gameId });
+    const piece = _getPieceAt(currentFen, file, rank);
+    if (piece && piece.color === (myColor==='white'?'w':'b')) {
+      selectedSquare = { file, rank };
+      _send({ type:'get_moves', square:_alg(file,rank), gameId });
+      window.Telegram?.WebApp?.HapticFeedback?.selectionChanged();
     } else {
-      selectedSquare = null;
-      legalMoves = [];
+      selectedSquare = null; legalMoves = [];
       Scene3D.clearHighlights();
     }
   }
 
-  function makeMove(from, to, promotion = null) {
-    const moveData = {
-      from: algFromCoords(from.file, from.rank),
-      to: algFromCoords(to.file, to.rank)
-    };
-    if (promotion) moveData.promotion = promotion;
-    send({ type: 'move', move: moveData, gameId });
+  // ── Clock ──────────────────────────────────────────────────────────────
+  function _startClock() {
+    _stopClock();
+    clockInterval = setInterval(() => {
+      if (!gameActive) return;
+      const turn = currentFen.split(' ')[1];
+      if (turn === 'w') clockWhite = Math.max(0, clockWhite - 1);
+      else clockBlack = Math.max(0, clockBlack - 1);
+      _renderClocks();
+      if (clockWhite === 0 || clockBlack === 0) _stopClock();
+    }, 1000);
   }
 
-  function showPromotion(from, to) {
-    promotionPending = { from, to };
-    const color = myColor === 'white' ? '♕♖♗♘' : '♛♜♝♞';
-    const pieces = ['q', 'r', 'b', 'n'];
-    const symbols = myColor === 'white'
-      ? ['♕', '♖', '♗', '♘']
-      : ['♛', '♜', '♝', '♞'];
-
-    const container = document.getElementById('promotion-pieces');
-    container.innerHTML = '';
-    pieces.forEach((p, i) => {
-      const btn = document.createElement('button');
-      btn.className = 'promo-btn';
-      btn.textContent = symbols[i];
-      btn.onclick = () => {
-        makeMove(promotionPending.from, promotionPending.to, p);
-        promotionPending = null;
-        UI.closeModal('promotion-modal');
-      };
-      container.appendChild(btn);
-    });
-    document.getElementById('promotion-modal').classList.remove('hidden');
+  function _stopClock() {
+    clearInterval(clockInterval); clockInterval = null;
   }
 
-  // ── FEN Helpers ───────────────────────────────────────────────────────
-  function drawPositionFromFen(fen) {
+  function _updateClock(nextTurn) {} // handled by interval
+
+  function _renderClocks() {
+    const isSelfWhite = myColor === 'white';
+    UI.updateClock('self', isSelfWhite ? clockWhite : clockBlack);
+    UI.updateClock('opp',  isSelfWhite ? clockBlack : clockWhite);
+  }
+
+  // ── FEN Helpers ────────────────────────────────────────────────────────
+  function _drawFen(fen) {
     Scene3D.clearPieces();
     const rows = fen.split(' ')[0].split('/');
     for (let rank = 7; rank >= 0; rank--) {
       const row = rows[7 - rank];
       let file = 0;
       for (const ch of row) {
-        if (/\d/.test(ch)) {
-          file += parseInt(ch);
-        } else {
-          const color = ch === ch.toUpperCase() ? 'w' : 'b';
-          const type = ch.toLowerCase();
-          Scene3D.placePiece(type, color, file, rank);
-          file++;
-        }
+        if (/\d/.test(ch)) { file += +ch; continue; }
+        Scene3D.placePiece(ch.toLowerCase(), ch===ch.toUpperCase()?'w':'b', file, rank);
+        file++;
       }
     }
   }
 
-  function getPieceOnSquare(fen, file, rank) {
+  function _getPieceAt(fen, file, rank) {
     const rows = fen.split(' ')[0].split('/');
-    const row = rows[7 - rank];
-    let f = 0;
+    const row = rows[7 - rank]; let f = 0;
     for (const ch of row) {
-      if (/\d/.test(ch)) {
-        f += parseInt(ch);
-      } else {
-        if (f === file) {
-          return { type: ch.toLowerCase(), color: ch === ch.toUpperCase() ? 'w' : 'b' };
-        }
-        f++;
-      }
+      if (/\d/.test(ch)) { f += +ch; continue; }
+      if (f === file) return { type: ch.toLowerCase(), color: ch===ch.toUpperCase()?'w':'b' };
+      f++;
     }
     return null;
   }
 
-  function findKing(fen, turn) {
-    const kingChar = turn === 'w' ? 'K' : 'k';
+  function _findKing(fen, turn) {
+    const kingCh = turn === 'w' ? 'K' : 'k';
     const rows = fen.split(' ')[0].split('/');
     for (let rank = 7; rank >= 0; rank--) {
-      const row = rows[7 - rank];
-      let file = 0;
+      const row = rows[7-rank]; let file = 0;
       for (const ch of row) {
-        if (/\d/.test(ch)) file += parseInt(ch);
-        else {
-          if (ch === kingChar) return { file, rank };
-          file++;
-        }
+        if (/\d/.test(ch)) { file += +ch; continue; }
+        if (ch === kingCh) return { file, rank };
+        file++;
       }
     }
     return null;
   }
 
-  function fileFromAlg(sq) { return sq.charCodeAt(0) - 97; }
-  function rankFromAlg(sq) { return parseInt(sq[1]) - 1; }
-  function algFromCoords(file, rank) { return String.fromCharCode(97 + file) + (rank + 1); }
+  function _file(sq) { return sq.charCodeAt(0) - 97; }
+  function _rank(sq) { return parseInt(sq[1]) - 1; }
+  function _alg(f,r) { return String.fromCharCode(97+f) + (r+1); }
 
-  function trackCapture(piece, capturedBy) {
-    const side = capturedBy === 'w' ? 'w' : 'b';
-    capturedPieces[side].push(piece);
-  }
-
-  // ── Clock ─────────────────────────────────────────────────────────────
-  function startClock() {
-    clockWhite = 600; clockBlack = 600;
-    stopClock();
-    clockInterval = setInterval(() => {
-      if (!gameActive) return;
-      const isTurnW = currentFen.split(' ')[1] === 'w';
-      if (isTurnW) clockWhite = Math.max(0, clockWhite - 1);
-      else clockBlack = Math.max(0, clockBlack - 1);
-      updateClockDisplay();
-    }, 1000);
-  }
-
-  function stopClock() {
-    if (clockInterval) { clearInterval(clockInterval); clockInterval = null; }
-  }
-
-  function updateClock(nextTurn) {
-    // handled by interval
-  }
-
-  function updateClockDisplay() {
-    const fmt = t => `${Math.floor(t/60).toString().padStart(2,'0')}:${(t%60).toString().padStart(2,'0')}`;
-    const wEl = document.getElementById('clock-white');
-    const bEl = document.getElementById('clock-black');
-    if (wEl) { wEl.textContent = fmt(clockWhite); wEl.classList.toggle('urgent', clockWhite < 30); }
-    if (bEl) { bEl.textContent = fmt(clockBlack); bEl.classList.toggle('urgent', clockBlack < 30); }
-  }
-
-  // ── UI Helpers ────────────────────────────────────────────────────────
-  function updateTurnUI() {
-    const turn = currentFen.split(' ')[1];
-    const isWhiteTurn = turn === 'w';
-
-    document.getElementById('hud-self').classList.toggle('active',
-      (myColor === 'white' && isWhiteTurn) || (myColor === 'black' && !isWhiteTurn));
-    document.getElementById('hud-opponent').classList.toggle('active',
-      (myColor === 'white' && !isWhiteTurn) || (myColor === 'black' && isWhiteTurn));
-
-    const statusEl = document.getElementById('status-text');
-    if (statusEl) {
-      if (isMyTurn) {
-        statusEl.textContent = 'Ваш ход';
-        statusEl.className = '';
-      } else {
-        statusEl.textContent = 'Ход соперника';
-        statusEl.className = '';
-      }
-    }
-  }
-
-  // ── Public Actions ────────────────────────────────────────────────────
-  function findGame(mode, difficulty) {
+  // ── Public actions ─────────────────────────────────────────────────────
+  function findGame(mode, difficulty, tc) {
     currentMode = mode;
-    currentDifficulty = difficulty;
-    send({ type: 'find_game', mode, difficulty });
+    currentDifficulty = difficulty || 'medium';
+    if (tc) timeControl = tc;
+    _send({ type:'find_game', mode, difficulty });
+    if (mode === 'ai') {} // game starts immediately
   }
 
-  function cancelSearch() {
-    send({ type: 'cancel_search' });
-    UI.closeModal('waiting-modal');
-  }
-
-  function offerDraw() {
-    if (!gameActive) return;
-    send({ type: 'offer_draw', gameId });
-  }
-
-  function acceptDraw() {
-    send({ type: 'accept_draw', gameId });
-    UI.closeModal('draw-modal');
-  }
+  function cancelSearch() { _send({ type:'cancel_search' }); }
+  function offerDraw()    { if (gameActive) _send({ type:'offer_draw', gameId }); }
+  function acceptDraw()   { _send({ type:'accept_draw', gameId }); UI.closeOverlay('modal-draw'); }
 
   function resign() {
     if (!gameActive) return;
-    send({ type: 'resign', gameId });
+    _send({ type:'resign', gameId });
     gameActive = false;
   }
 
-  function rotateCamera() {
-    Scene3D.flipCamera();
-  }
+  function requestStats()       { _send({ type:'get_stats' }); }
+  function requestLeaderboard() { _send({ type:'leaderboard' }); }
 
-  function requestStats() { send({ type: 'get_stats' }); }
-  function requestLeaderboard() { send({ type: 'leaderboard' }); }
-
-  // ── Init ──────────────────────────────────────────────────────────────
   function init() {
     connect();
-
-    // Canvas click handler
     const canvas = document.getElementById('chess-canvas');
-    let touchStartTime = 0;
-    let touchMoved = false;
-    let touchStartX = 0, touchStartY = 0;
 
-    canvas.addEventListener('touchstart', (e) => {
-      touchStartTime = Date.now();
-      touchMoved = false;
-      touchStartX = e.touches[0].clientX;
-      touchStartY = e.touches[0].clientY;
-    }, { passive: true });
-
-    canvas.addEventListener('touchmove', (e) => {
-      const dx = e.touches[0].clientX - touchStartX;
-      const dy = e.touches[0].clientY - touchStartY;
-      if (Math.abs(dx) > 8 || Math.abs(dy) > 8) touchMoved = true;
-    }, { passive: true });
-
-    canvas.addEventListener('touchend', (e) => {
-      if (touchMoved) return;
-      if (Date.now() - touchStartTime > 500) return;
+    // Touch handling — tap only, no drag
+    let tx=0, ty=0, tt=0, moved=false;
+    canvas.addEventListener('touchstart', e => {
+      tx=e.touches[0].clientX; ty=e.touches[0].clientY;
+      tt=Date.now(); moved=false;
+    }, { passive:true });
+    canvas.addEventListener('touchmove', e => {
+      if (Math.abs(e.touches[0].clientX-tx)>10||Math.abs(e.touches[0].clientY-ty)>10) moved=true;
+    }, { passive:true });
+    canvas.addEventListener('touchend', e => {
+      if (moved || Date.now()-tt>500) return;
       const t = e.changedTouches[0];
       const sq = Scene3D.getClickedSquare(t.clientX, t.clientY);
       if (sq) handleSquareClick(sq.file, sq.rank);
-    }, { passive: true });
+    }, { passive:true });
 
-    canvas.addEventListener('click', (e) => {
+    canvas.addEventListener('click', e => {
+      if (e.pointerType==='touch') return;
       const sq = Scene3D.getClickedSquare(e.clientX, e.clientY);
       if (sq) handleSquareClick(sq.file, sq.rank);
     });
   }
 
   return {
-    init,
-    findGame,
-    cancelSearch,
-    offerDraw,
-    acceptDraw,
-    resign,
-    rotateCamera,
-    requestStats,
-    requestLeaderboard,
-    handleSquareClick
+    init, findGame, cancelSearch,
+    offerDraw, acceptDraw, resign,
+    handleSquareClick,
+    requestStats, requestLeaderboard
   };
 })();
