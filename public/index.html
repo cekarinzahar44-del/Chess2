@@ -2,56 +2,55 @@
 <html lang="ru">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <meta name="theme-color" content="#0a0a0f">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <meta name="theme-color" content="#080808">
   <title>3D Chess</title>
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700&family=Inter:wght@300;400;500&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/css/style.css">
 </head>
 <body>
 
-<!-- Loading Screen -->
+<!-- Loading -->
 <div id="loading-screen">
-  <div class="loading-inner">
-    <div class="chess-icon">♛</div>
-    <h1>3D Chess</h1>
-    <div class="loading-bar"><div class="loading-fill"></div></div>
-    <p class="loading-text">Загрузка движка...</p>
+  <div class="load-inner">
+    <div class="load-crown">♛</div>
+    <h1 class="load-title">3D Chess</h1>
+    <div class="load-bar"><div class="load-fill" id="load-fill"></div></div>
+    <p class="load-text" id="load-text">Инициализация...</p>
   </div>
 </div>
 
 <!-- Main Menu -->
 <div id="main-menu" class="screen hidden">
-  <div class="menu-bg"></div>
-  <div class="menu-content">
+  <div class="menu-glow"></div>
+  <div class="menu-wrap">
     <div class="logo">
-      <span class="logo-icon">♛</span>
+      <span class="logo-crown">♛</span>
       <h1 class="logo-title">3D Chess</h1>
-      <p class="logo-sub">Telegram Mini App</p>
+      <p class="logo-sub">Premium Edition</p>
     </div>
 
     <div class="player-card" id="player-card">
-      <div class="player-avatar" id="player-avatar">?</div>
-      <div class="player-info">
-        <span class="player-name" id="player-name">Загрузка...</span>
-        <span class="player-elo" id="player-elo">ELO: —</span>
+      <div class="pc-avatar" id="player-avatar">Z</div>
+      <div class="pc-info">
+        <span class="pc-name" id="player-name">Загрузка...</span>
+        <span class="pc-elo" id="player-elo">ELO —</span>
       </div>
     </div>
 
-    <div class="menu-buttons">
-      <button class="btn btn-primary" onclick="UI.showModeSelect()">
-        <span class="btn-icon">⚔️</span>
-        <span>Новая партия</span>
+    <div class="menu-btns">
+      <button class="btn btn-gold" onclick="UI.showModeSelect()">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+        Новая партия
       </button>
-      <button class="btn btn-secondary" onclick="UI.showLeaderboard()">
-        <span class="btn-icon">🏆</span>
-        <span>Таблица лидеров</span>
+      <button class="btn btn-dark" onclick="UI.showLeaderboard()">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>
+        Таблица лидеров
       </button>
-      <button class="btn btn-secondary" onclick="UI.showStats()">
-        <span class="btn-icon">📊</span>
-        <span>Моя статистика</span>
+      <button class="btn btn-dark" onclick="UI.showStats()">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="6"/><path d="M15.477 12.89 17 22l-5-3-5 3 1.523-9.11"/></svg>
+        Моя статистика
       </button>
     </div>
   </div>
@@ -59,25 +58,31 @@
 
 <!-- Mode Select -->
 <div id="mode-select" class="screen hidden">
-  <div class="screen-header">
-    <button class="back-btn" onclick="UI.showMenu()">←</button>
-    <h2>Выбор режима</h2>
+  <div class="screen-hdr">
+    <button class="back-btn" onclick="UI.showMenu()">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg>
+    </button>
+    <h2>Режим игры</h2>
   </div>
   <div class="mode-cards">
     <div class="mode-card" onclick="UI.selectMode('ai')">
-      <div class="mode-icon">🤖</div>
+      <div class="mode-icon">
+        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+      </div>
       <h3>Против ИИ</h3>
       <p>Тренировка с компьютером</p>
-      <div class="mode-difficulty" id="ai-difficulty-select">
+      <div class="diff-row" id="diff-row">
         <button class="diff-btn active" data-diff="easy">Лёгкий</button>
         <button class="diff-btn" data-diff="medium">Средний</button>
         <button class="diff-btn" data-diff="hard">Сложный</button>
       </div>
     </div>
     <div class="mode-card" onclick="UI.selectMode('multiplayer')">
-      <div class="mode-icon">👥</div>
+      <div class="mode-icon">
+        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+      </div>
       <h3>Мультиплеер</h3>
-      <p>Быстрый поиск соперника</p>
+      <p>Быстрый матчмейкинг</p>
       <div class="mode-badge">Рейтинговый</div>
     </div>
   </div>
@@ -85,110 +90,113 @@
 
 <!-- Game Screen -->
 <div id="game-screen" class="screen hidden">
-  <!-- 3D Canvas -->
   <canvas id="chess-canvas"></canvas>
 
-  <!-- Top HUD -->
-  <div class="hud-top">
-    <div class="hud-player hud-player--black" id="hud-opponent">
-      <div class="hud-avatar">♔</div>
+  <!-- Opponent HUD -->
+  <div class="hud hud-top">
+    <div class="hud-player">
+      <div class="hud-av hud-av--dark">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/></svg>
+      </div>
       <div class="hud-info">
         <span class="hud-name" id="opponent-name">Соперник</span>
-        <span class="hud-elo" id="opponent-elo">ELO —</span>
+        <span class="hud-elo-txt" id="opponent-elo">ELO —</span>
       </div>
-      <div class="hud-clock" id="clock-black">10:00</div>
     </div>
+    <div class="hud-clock" id="clock-black">10:00</div>
   </div>
 
-  <!-- Status Bar -->
-  <div class="status-bar" id="status-bar">
+  <!-- Status -->
+  <div class="status-wrap" id="status-wrap">
     <span id="status-text">Ваш ход</span>
   </div>
 
-  <!-- Captured pieces -->
-  <div class="captured-row" id="captured-black"></div>
-
-  <!-- Bottom HUD -->
-  <div class="hud-bottom">
-    <div class="hud-player hud-player--white" id="hud-self">
-      <div class="hud-avatar">♚</div>
+  <!-- Self HUD -->
+  <div class="hud hud-bot">
+    <div class="hud-player">
+      <div class="hud-av hud-av--light">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg>
+      </div>
       <div class="hud-info">
         <span class="hud-name" id="self-name">Вы</span>
-        <span class="hud-elo" id="self-elo">ELO —</span>
+        <span class="hud-elo-txt" id="self-elo">ELO —</span>
       </div>
-      <div class="hud-clock" id="clock-white">10:00</div>
     </div>
-
-    <!-- Game Controls -->
-    <div class="game-controls">
-      <button class="ctrl-btn" onclick="Game.rotateCamera()" title="Повернуть камеру">🔄</button>
-      <button class="ctrl-btn" onclick="UI.cycleBackground()" title="Сменить фон">🎨</button>
-      <button class="ctrl-btn" onclick="Game.offerDraw()" title="Предложить ничью">🤝</button>
-      <button class="ctrl-btn ctrl-btn--danger" onclick="UI.confirmResign()" title="Сдаться">🏳️</button>
+    <div class="hud-clock active" id="clock-white">10:00</div>
+    <div class="ctrl-row">
+      <button class="ctrl-btn" onclick="Scene3D.flipCamera()" title="Повернуть">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+      </button>
+      <button class="ctrl-btn" onclick="UI.cycleBackground()" title="Фон">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M12 1v4M12 19v4M4.22 4.22l2.83 2.83M16.95 16.95l2.83 2.83M1 12h4M19 12h4M4.22 19.78l2.83-2.83M16.95 7.05l2.83-2.83"/></svg>
+      </button>
+      <button class="ctrl-btn" onclick="Game.offerDraw()" title="Ничья">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
+      </button>
+      <button class="ctrl-btn ctrl-btn--danger" onclick="UI.confirmResign()" title="Сдаться">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
     </div>
   </div>
-
-  <div class="captured-row" id="captured-white"></div>
 </div>
 
-<!-- Game Over Modal -->
+<!-- Modals -->
 <div id="game-over-modal" class="modal hidden">
-  <div class="modal-content">
-    <div class="modal-icon" id="result-icon">👑</div>
-    <h2 id="result-title">Победа!</h2>
-    <p id="result-desc">Мат в 32 хода</p>
+  <div class="modal-box">
+    <div class="modal-icon" id="result-icon">
+      <svg width="52" height="52" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+    </div>
+    <h2 id="result-title">Победа</h2>
+    <p id="result-desc">Мат в 28 ходов</p>
     <div class="elo-change" id="elo-change">+15 ELO</div>
-    <div class="modal-buttons">
-      <button class="btn btn-primary" onclick="UI.playAgain()">Ещё раз</button>
-      <button class="btn btn-secondary" onclick="UI.showMenu()">В меню</button>
+    <div class="modal-btns">
+      <button class="btn btn-gold" onclick="UI.playAgain()">Ещё раз</button>
+      <button class="btn btn-dark" onclick="UI.showMenu()">В меню</button>
     </div>
   </div>
 </div>
 
-<!-- Waiting Modal -->
 <div id="waiting-modal" class="modal hidden">
-  <div class="modal-content">
-    <div class="spinner">⚙️</div>
-    <h2>Поиск соперника...</h2>
-    <p>Ожидайте подключения игрока</p>
-    <button class="btn btn-secondary" onclick="Game.cancelSearch()">Отмена</button>
+  <div class="modal-box">
+    <div class="spin-ring"></div>
+    <h2>Поиск соперника</h2>
+    <p>Ожидаем подключения...</p>
+    <button class="btn btn-dark" style="margin-top:20px" onclick="Game.cancelSearch()">Отмена</button>
   </div>
 </div>
 
-<!-- Leaderboard Modal -->
 <div id="leaderboard-modal" class="modal hidden">
-  <div class="modal-content modal-content--wide">
-    <div class="modal-header">
-      <h2>🏆 Таблица лидеров</h2>
-      <button class="close-btn" onclick="UI.closeModal('leaderboard-modal')">✕</button>
+  <div class="modal-box modal-box--wide">
+    <div class="modal-hdr">
+      <h2>Лидеры</h2>
+      <button class="close-btn" onclick="UI.closeModal('leaderboard-modal')">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
     </div>
-    <div id="leaderboard-list" class="leaderboard-list"></div>
+    <div id="leaderboard-list" class="lb-list"></div>
   </div>
 </div>
 
-<!-- Draw Offer Modal -->
 <div id="draw-modal" class="modal hidden">
-  <div class="modal-content">
-    <h2>🤝 Предложение ничьей</h2>
+  <div class="modal-box">
+    <h2>Предложение ничьей</h2>
     <p>Соперник предлагает ничью</p>
-    <div class="modal-buttons">
-      <button class="btn btn-primary" onclick="Game.acceptDraw()">Принять</button>
-      <button class="btn btn-secondary" onclick="UI.closeModal('draw-modal')">Отказать</button>
+    <div class="modal-btns">
+      <button class="btn btn-gold" onclick="Game.acceptDraw()">Принять</button>
+      <button class="btn btn-dark" onclick="UI.closeModal('draw-modal')">Отклонить</button>
     </div>
   </div>
 </div>
 
-<!-- Promotion Modal -->
 <div id="promotion-modal" class="modal hidden">
-  <div class="modal-content">
+  <div class="modal-box">
     <h2>Выберите фигуру</h2>
-    <div class="promotion-pieces" id="promotion-pieces"></div>
+    <div class="promo-row" id="promotion-pieces"></div>
   </div>
 </div>
 
-<!-- Scripts -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
+<script src="/js/GLTFLoader.js"></script>
 <script src="/js/three-addons.js"></script>
 <script src="/js/pieces.js"></script>
 <script src="/js/scene.js"></script>
