@@ -335,12 +335,18 @@ const Scene3D = (() => {
     renderer.setSize(w,h); _setCamPos();
   }
 
+  // Dynamic board recolor
+  function setBoardColors(light, dark) {
+    if (lightSqMat) lightSqMat.color.setHex(light);
+    if (darkSqMat)  darkSqMat.color.setHex(dark);
+  }
+
   return {
     init,placePiece,removePiece,clearPieces,getPieceAt,
     animatePiece,clearHighlights,highlightSquare,
     squareToWorld,getClickedSquare,
     flipCamera,rotateCameraToWhite,rotateCameraToBlack,
-    cycleBackground,addAnimation,
+    setBackground,cycleBackground,addAnimation,setBoardColors,
     get scene(){return scene;},get camera(){return camera;}
   };
 })();
