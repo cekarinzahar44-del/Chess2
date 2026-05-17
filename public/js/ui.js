@@ -77,7 +77,7 @@ const UI = (() => {
         top:${Math.random()*100}%;
         animation:float-piece ${8+Math.random()*8}s ease-in-out infinite;
         animation-delay:-${Math.random()*8}s;
-        pointer-events:none;
+        pointer-events:none;user-select:none;z-index:0;
       `;
       bg.appendChild(span);
     }
