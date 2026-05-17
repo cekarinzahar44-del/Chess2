@@ -27,8 +27,8 @@ const Scene3D = (() => {
   // ── Init ──────────────────────────────────────────────────────────────
   function init(canvas) {
     // Premium board materials
-    matLightSq = new THREE.MeshStandardMaterial({ color:0xd4a574, roughness:0.40, metalness:0.02 });
-    matDarkSq  = new THREE.MeshStandardMaterial({ color:0x3d1a08, roughness:0.55, metalness:0.02 });
+    matLightSq = new THREE.MeshStandardMaterial({ color:0xc8955a, roughness:0.42, metalness:0.02 });
+    matDarkSq  = new THREE.MeshStandardMaterial({ color:0x2c0e04, roughness:0.58, metalness:0.02 });
     matFrame   = new THREE.MeshStandardMaterial({ color:0x1e0c04, roughness:0.50, metalness:0.08 });
     matBase    = new THREE.MeshStandardMaterial({ color:0x120802, roughness:0.65, metalness:0.05 });
     matEdge    = new THREE.MeshStandardMaterial({ color:0xd4a012, roughness:0.12, metalness:0.95 });
