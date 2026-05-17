@@ -33,7 +33,18 @@
 
     setProgress(25, 'Создание сцены...');
     await sleep(60);
+
+    // ВАЖНО: canvas должен быть видим при init чтобы получить правильный размер
+    const gameScreen = document.getElementById('screen-game');
+    const prevDisplay = gameScreen.style.display;
+    gameScreen.style.display = 'block';
+    gameScreen.style.visibility = 'hidden'; // видим для layout, но не виден пользователю
+    await sleep(50); // даём браузеру рассчитать layout
+
     Scene3D.init(document.getElementById('chess-canvas'));
+
+    gameScreen.style.display = prevDisplay || '';
+    gameScreen.style.visibility = '';
 
     setProgress(50, 'Загрузка фигур...');
     await PieceFactory.init();
