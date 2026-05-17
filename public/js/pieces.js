@@ -9,8 +9,18 @@ const PieceFactory = (() => {
 
   function _mats() {
     if (wMat) return;
-    wMat = new THREE.MeshStandardMaterial({ color:0xf8f0dc, roughness:0.20, metalness:0.06 });
-    bMat = new THREE.MeshStandardMaterial({ color:0x1a0e06, roughness:0.24, metalness:0.10 });
+    wMat = new THREE.MeshStandardMaterial({
+      color: 0xede0c4,      // тёплый кремовый — контрастен на светлых клетках
+      roughness: 0.18,
+      metalness: 0.08,
+      envMapIntensity: 1.4
+    });
+    bMat = new THREE.MeshStandardMaterial({
+      color: 0x1a0e04,      // тёмный эбен
+      roughness: 0.22,
+      metalness: 0.14,
+      envMapIntensity: 1.2
+    });
   }
 
   // Helpers
