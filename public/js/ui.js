@@ -53,7 +53,10 @@ const UI = (() => {
 
   function showGameScreen() {
     showScreen('screen-game');
-    document.getElementById('move-indicator').classList.remove('hidden');
+    const mi = document.getElementById('move-indicator');
+    if (mi) mi.classList.remove('hidden');
+    // Trigger resize so renderer updates to correct canvas dimensions
+    setTimeout(() => { window.dispatchEvent(new Event('resize')); }, 50);
   }
 
   // ── Menu bg animation ──────────────────────────────────────────────────
