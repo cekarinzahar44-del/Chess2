@@ -481,17 +481,28 @@ const UI = (() => {
   }
 
   // ── Promotion ──────────────────────────────────────────────────────────
+  let _promoCallback = null;
+
   function showPromotion(color, callback) {
+    _promoCallback = callback;
     const pieces = color === 'w'
       ? [['q','♕'],['r','♖'],['b','♗'],['n','♘']]
       : [['q','♛'],['r','♜'],['b','♝'],['n','♞']];
     const grid = document.getElementById('promo-grid');
     if (grid) {
       grid.innerHTML = pieces.map(([t,s]) =>
-        `<button class="promo-btn" onclick="(${callback.toString()})('${t}');UI.closeOverlay('modal-promotion')">${s}</button>`
+        `<button class="promo-btn" onclick="UI._selectPromo('${t}')">${s}</button>`
       ).join('');
     }
     openOverlay('modal-promotion');
+  }
+
+  function _selectPromo(piece) {
+    closeOverlay('modal-promotion');
+    if (_promoCallback) {
+      _promoCallback(piece);
+      _promoCallback = null;
+    }
   }
 
   // ── Toast ──────────────────────────────────────────────────────────────
@@ -548,7 +559,7 @@ const UI = (() => {
     setDifficulty, setColor, startAiGame, startMultiplayer,
     setTurn, updateClock, setActivePlayer, updateEval, updateCaptured,
     addMove, clearMoves, toggleMoveList,
-    showResult, showDrawOffer, showPromotion,
+    showResult, showDrawOffer, showPromotion, _selectPromo,
     showLeaderboard, displayLeaderboard,
     showAchievements, unlockAchievement,
     showHistory, saveGameToHistory,
