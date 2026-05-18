@@ -44,8 +44,7 @@ const Scene3D = (() => {
     renderer = new THREE.WebGLRenderer({ canvas, antialias:true, powerPreference:'high-performance' });
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2.5));
     renderer.setSize(window.innerWidth, window.innerHeight);
-    renderer.shadowMap.enabled = true;
-    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    renderer.shadowMap.enabled = false; // тени отключены — чище выглядит
     renderer.toneMapping = THREE.ACESFilmicToneMapping;
     renderer.toneMappingExposure = 1.05;
     renderer.outputEncoding = THREE.sRGBEncoding;
@@ -69,22 +68,22 @@ const Scene3D = (() => {
   // ── PREMIUM BOARD ─────────────────────────────────────────────────────
   function _buildBoard() {
     // Thick base with beveled edges
-    const base = new THREE.Mesh(new THREE.BoxGeometry(10.9, 0.70, 10.9), matBase);
-    base.position.y = -0.37; base.castShadow = true; base.receiveShadow = true;
+    const base = new THREE.Mesh(new THREE.BoxGeometry(12.2, 0.70, 12.2), matBase);
+    base.position.y = -0.37; base.receiveShadow = false;
     boardGroup.add(base);
 
     // Wood frame — slightly raised
-    const frame = new THREE.Mesh(new THREE.BoxGeometry(10.05, 0.12, 10.05), matFrame);
-    frame.position.y = 0.00; frame.receiveShadow = true;
+    const frame = new THREE.Mesh(new THREE.BoxGeometry(11.4, 0.12, 11.4), matFrame);
+    frame.position.y = 0.00; frame.receiveShadow = false;
     boardGroup.add(frame);
 
     // Gold inlay border — 4 strips
     const kantH = 0.06;
     [
-      [0, 0.07, -5.05, 10.12, kantH, 0.09],
-      [0, 0.07,  5.05, 10.12, kantH, 0.09],
-      [-5.05, 0.07, 0, 0.09, kantH, 10.12],
-      [ 5.05, 0.07, 0, 0.09, kantH, 10.12],
+      [0, 0.07, -5.72, 11.48, kantH, 0.09],
+      [0, 0.07,  5.72, 11.48, kantH, 0.09],
+      [-5.72, 0.07, 0, 0.09, kantH, 11.48],
+      [ 5.72, 0.07, 0, 0.09, kantH, 11.48],
     ].forEach(([x,y,z,w,h,d]) => {
       const m = new THREE.Mesh(new THREE.BoxGeometry(w,h,d), matEdge);
       m.position.set(x,y,z); boardGroup.add(m);
@@ -109,27 +108,139 @@ const Scene3D = (() => {
         const mat = isLight ? matLightSq : matDarkSq;
         const mesh = new THREE.Mesh(sqGeo, mat);
         mesh.position.set(OFF+c*SQ, 0.085, OFF+r*SQ);
-        mesh.receiveShadow = true;
+        mesh.receiveShadow = false;
         mesh.userData = { isSquare:true, row:r, col:c };
         boardGroup.add(mesh);
       }
     }
 
-    // Coordinate labels — subtle markings as thin cylinders
-    const dotMat = new THREE.MeshStandardMaterial({ color:0x8b6010, roughness:0.9 });
-    // Corner dots
-    [[-3.5,-3.5],[3.5,-3.5],[-3.5,3.5],[3.5,3.5]].forEach(([x,z]) => {
-      const dot = new THREE.Mesh(new THREE.CylinderGeometry(.03,.03,.001,8), dotMat);
-      dot.position.set(x, 0.13, z); boardGroup.add(dot);
+    // ── КООРДИНАТЫ НА ДОСКЕ (как на настоящих шахматах) ──────────────────
+    const files = ['a','b','c','d','e','f','g','h'];
+    const ranks = ['1','2','3','4','5','6','7','8'];
+    const labelCanvas = document.createElement('canvas');
+    labelCanvas.width = 64; labelCanvas.height = 64;
+    const ctx = labelCanvas.getContext('2d');
+
+    function makeLabel(text, isLight) {
+      ctx.clearRect(0,0,64,64);
+      ctx.fillStyle = isLight ? '#5c2e0e' : '#c8955a';
+      ctx.font = 'bold 36px Inter, sans-serif';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(text, 32, 34);
+      const tex = new THREE.CanvasTexture(labelCanvas);
+      tex.needsUpdate = true;
+      return tex.clone();
+    }
+
+    const labelMat = (text, isLight) => new THREE.MeshBasicMaterial({
+      map: makeLabel(text, isLight),
+      transparent: true, depthWrite: false, side: THREE.DoubleSide
     });
+
+    const LBL_SIZE = 0.72;
+    const LBL_Y   = 0.135;
+    const MARGIN  = 0.50; // отступ от края клеток
+
+    // Буквы a-h — снизу и сверху
+    for (let c = 0; c < 8; c++) {
+      const isLight = c % 2 === 0;
+      const x = OFF + c * SQ;
+
+      // Снизу (rank 0 side)
+      const geoB = new THREE.PlaneGeometry(LBL_SIZE, LBL_SIZE);
+      const mB = new THREE.Mesh(geoB, labelMat(files[c], isLight));
+      mB.rotation.x = -Math.PI/2;
+      mB.position.set(x, LBL_Y, OFF - MARGIN);
+      boardGroup.add(mB);
+
+      // Сверху (rank 7 side)
+      const geoT = new THREE.PlaneGeometry(LBL_SIZE, LBL_SIZE);
+      const mT = new THREE.Mesh(geoT, labelMat(files[c], !isLight));
+      mT.rotation.x = -Math.PI/2;
+      mT.rotation.z = Math.PI; // перевёрнуто
+      mT.position.set(x, LBL_Y, OFF + 8*SQ - 1 + MARGIN);
+      boardGroup.add(mT);
+    }
+
+    // Цифры 1-8 — слева и справа
+    for (let r = 0; r < 8; r++) {
+      const isLight = r % 2 === 1;
+      const z = OFF + r * SQ;
+
+      // Слева (file a side)
+      const geoL = new THREE.PlaneGeometry(LBL_SIZE, LBL_SIZE);
+      const mL = new THREE.Mesh(geoL, labelMat(ranks[r], isLight));
+      mL.rotation.x = -Math.PI/2;
+      mL.position.set(OFF - MARGIN, LBL_Y, z);
+      boardGroup.add(mL);
+
+      // Справа (file h side)
+      const geoR = new THREE.PlaneGeometry(LBL_SIZE, LBL_SIZE);
+      const mR = new THREE.Mesh(geoR, labelMat(ranks[r], !isLight));
+      mR.rotation.x = -Math.PI/2;
+      mR.rotation.z = Math.PI; // перевёрнуто
+      mR.position.set(OFF + 8*SQ - 1 + MARGIN, LBL_Y, z);
+      boardGroup.add(mR);
+    }
 
     // Elegant turned legs
     const legGeo = _buildLegGeo();
     [[-4.2,-4.2],[4.2,-4.2],[-4.2,4.2],[4.2,4.2]].forEach(([x,z]) => {
       const leg = new THREE.Mesh(legGeo, matLeg);
-      leg.position.set(x, -0.88, z); leg.castShadow = true;
+      leg.position.set(x, -0.88, z);
       boardGroup.add(leg);
     });
+
+    // Coordinate labels A-H and 1-8
+    _buildCoords();
+  }
+
+  function _makeLabel(text) {
+    const c = document.createElement('canvas');
+    c.width = 128; c.height = 128;
+    const ctx = c.getContext('2d');
+    ctx.clearRect(0,0,128,128);
+    ctx.fillStyle = 'rgba(212,160,80,0.9)';
+    ctx.font = 'bold 56px Georgia,serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(text, 64, 66);
+    const tex = new THREE.CanvasTexture(c);
+    const mat = new THREE.MeshBasicMaterial({ map:tex, transparent:true, depthWrite:false, side:THREE.DoubleSide });
+    const mesh = new THREE.Mesh(new THREE.PlaneGeometry(0.58, 0.58), mat);
+    mesh.rotation.x = -Math.PI / 2;
+    return mesh;
+  }
+
+  function _buildCoords() {
+    const FILES = ['A','B','C','D','E','F','G','H'];
+    const Y = 0.10;
+
+    FILES.forEach((letter, i) => {
+      const x = OFF + i * SQ;
+      // Bottom row
+      const lb = _makeLabel(letter);
+      lb.position.set(x, Y, OFF - 0.68);
+      boardGroup.add(lb);
+      // Top row
+      const lt = _makeLabel(letter);
+      lt.position.set(x, Y, OFF + 8*SQ + 0.08);
+      boardGroup.add(lt);
+    });
+
+    for (let r = 0; r < 8; r++) {
+      const z = OFF + (7 - r) * SQ;
+      const num = String(r + 1);
+      // Left
+      const ll = _makeLabel(num);
+      ll.position.set(OFF - 0.68, Y, z);
+      boardGroup.add(ll);
+      // Right
+      const lr = _makeLabel(num);
+      lr.position.set(OFF + 8*SQ + 0.08, Y, z);
+      boardGroup.add(lr);
+    }
   }
 
   function _buildLegGeo() {
@@ -151,12 +262,7 @@ const Scene3D = (() => {
     // Key light — sharp, dramatic
     const key = new THREE.DirectionalLight(0xfff8f0, 2.0);
     key.position.set(4, 16, 8);
-    key.castShadow = true;
-    key.shadow.mapSize.set(4096, 4096);
-    key.shadow.camera.left = key.shadow.camera.bottom = -9;
-    key.shadow.camera.right = key.shadow.camera.top = 9;
-    key.shadow.bias   = -0.0004;
-    key.shadow.radius = 2;
+
     scene.add(key);
 
     // Fill light — cool, from opposite side
@@ -198,7 +304,7 @@ const Scene3D = (() => {
     // Stone floor with subtle pattern
     const floorMat = new THREE.MeshStandardMaterial({ color:0x0a0704, roughness:0.98, metalness:0.01 });
     const floor = new THREE.Mesh(new THREE.PlaneGeometry(80,80), floorMat);
-    floor.rotation.x=-Math.PI/2; floor.position.y=-1.1; floor.receiveShadow=true; floor.userData.env=true;
+    floor.rotation.x=-Math.PI/2; floor.position.y=-1.1;  floor.userData.env=true;
     scene.add(floor);
 
     // Candelabras
@@ -231,7 +337,7 @@ const Scene3D = (() => {
     const pillarMat = new THREE.MeshStandardMaterial({ color:0x14100a, roughness:0.95 });
     [[-10,0,-10],[-10,0,10],[10,0,-10],[10,0,10]].forEach(([x,,z]) => {
       const p = new THREE.Mesh(new THREE.CylinderGeometry(.42,.52,13,14), pillarMat);
-      p.position.set(x,5.4,z); p.castShadow=true; p.userData.env=true; scene.add(p);
+      p.position.set(x,5.4,z);  p.userData.env=true; scene.add(p);
       // Capital
       const cap = new THREE.Mesh(new THREE.BoxGeometry(1.2,.3,1.2), pillarMat);
       cap.position.set(x,12,z); cap.userData.env=true; scene.add(cap);
@@ -308,7 +414,7 @@ const Scene3D = (() => {
     const floor=new THREE.Mesh(new THREE.PlaneGeometry(80,80),
       new THREE.MeshStandardMaterial({ color:0x080808, roughness:0.05, metalness:0.85 }));
     floor.rotation.x=-Math.PI/2; floor.position.y=-1.1;
-    floor.receiveShadow=true; floor.userData.env=true; scene.add(floor);
+     floor.userData.env=true; scene.add(floor);
 
     // Subtle light strips
     const stripMat=new THREE.MeshBasicMaterial({ color:0xc9a84c, transparent:true, opacity:.06 });
@@ -334,6 +440,8 @@ const Scene3D = (() => {
     const p=squareToWorld(file,rank);
     piece.position.set(p.x, 0.13, p.z);
     piece.userData.file=file; piece.userData.rank=rank;
+    // No shadows on pieces
+    piece.traverse(c=>{ c.castShadow=false; c.receiveShadow=false; });
     piecesGroup.add(piece); return piece;
   }
   function removePiece(file,rank){
