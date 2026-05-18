@@ -201,14 +201,15 @@ const Scene3D = (() => {
     c.width = 128; c.height = 128;
     const ctx = c.getContext('2d');
     ctx.clearRect(0,0,128,128);
-    ctx.fillStyle = 'rgba(212,160,80,0.9)';
-    ctx.font = 'bold 56px Georgia,serif';
+    ctx.fillStyle = 'rgba(220,175,90,0.95)';
+    ctx.font = 'bold 60px Georgia,serif';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
     ctx.fillText(text, 64, 66);
     const tex = new THREE.CanvasTexture(c);
     const mat = new THREE.MeshBasicMaterial({ map:tex, transparent:true, depthWrite:false, side:THREE.DoubleSide });
-    const mesh = new THREE.Mesh(new THREE.PlaneGeometry(0.58, 0.58), mat);
+    const mesh = new THREE.Mesh(new THREE.PlaneGeometry(0.55, 0.55), mat);
+    // Лежит плашмя — rotation управляется снаружи
     mesh.rotation.x = -Math.PI / 2;
     return mesh;
   }
@@ -217,28 +218,38 @@ const Scene3D = (() => {
     const FILES = ['A','B','C','D','E','F','G','H'];
     const Y = 0.10;
 
+    // Буквы ТОЛЬКО сверху и снизу (как на классической доске)
     FILES.forEach((letter, i) => {
       const x = OFF + i * SQ;
-      // Bottom row
+
+      // Снизу (перед rank 1) — буква читается нормально
       const lb = _makeLabel(letter);
-      lb.position.set(x, Y, OFF - 0.68);
+      lb.position.set(x, Y, OFF + 8*SQ + 0.55);
       boardGroup.add(lb);
-      // Top row
+
+      // Сверху (за rank 8) — буква перевёрнута для вида с другой стороны
       const lt = _makeLabel(letter);
-      lt.position.set(x, Y, OFF + 8*SQ + 0.08);
+      lt.rotation.x = -Math.PI / 2;
+      lt.rotation.z = Math.PI; // перевёрнута
+      lt.position.set(x, Y, OFF - 0.55);
       boardGroup.add(lt);
     });
 
+    // Цифры ТОЛЬКО по бокам (слева и справа)
     for (let r = 0; r < 8; r++) {
-      const z = OFF + (7 - r) * SQ;
+      const z = OFF + r * SQ; // rank 1 внизу
       const num = String(r + 1);
-      // Left
+
+      // Слева
       const ll = _makeLabel(num);
-      ll.position.set(OFF - 0.68, Y, z);
+      ll.position.set(OFF - 0.55, Y, z);
       boardGroup.add(ll);
-      // Right
+
+      // Справа
       const lr = _makeLabel(num);
-      lr.position.set(OFF + 8*SQ + 0.08, Y, z);
+      lr.rotation.x = -Math.PI / 2;
+      lr.rotation.z = Math.PI;
+      lr.position.set(OFF + 8*SQ + 0.55, Y, z);
       boardGroup.add(lr);
     }
   }
