@@ -133,17 +133,31 @@ const Scene3D = (() => {
     cv.width = sz; cv.height = sz;
     const ctx = cv.getContext('2d');
     ctx.clearRect(0, 0, sz, sz);
-    ctx.fillStyle = 'rgba(200, 160, 70, 0.88)';
-    ctx.font = 'bold 148px Georgia, serif';
+
+    // Тёмная круглая подложка — метка видна на любом фоне
+    ctx.beginPath();
+    ctx.arc(sz/2, sz/2, sz/2 - 8, 0, Math.PI * 2);
+    ctx.fillStyle = 'rgba(20, 10, 4, 0.72)';
+    ctx.fill();
+
+    // Золотая обводка
+    ctx.strokeStyle = 'rgba(212, 168, 60, 0.6)';
+    ctx.lineWidth = 6;
+    ctx.stroke();
+
+    // Яркий золотой текст
+    ctx.fillStyle = '#e8c060';
+    ctx.font = 'bold 144px Georgia, serif';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
     ctx.fillText(text, sz/2, sz/2 + 8);
+
     const tex = new THREE.CanvasTexture(cv);
     tex.needsUpdate = true;
     const mat = new THREE.MeshBasicMaterial({
       map: tex, transparent: true, depthWrite: false, side: THREE.DoubleSide
     });
-    const mesh = new THREE.Mesh(new THREE.PlaneGeometry(0.50, 0.50), mat);
+    const mesh = new THREE.Mesh(new THREE.PlaneGeometry(0.54, 0.54), mat);
     mesh.rotation.x = -Math.PI / 2;
     return mesh;
   }
