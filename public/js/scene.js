@@ -215,42 +215,53 @@ const Scene3D = (() => {
   }
 
   function _buildCoords() {
-    const FILES = ['A','B','C','D','E','F','G','H'];
-    const Y = 0.10;
+    // OFF = -3.5, SQ = 1.0
+    // Клетки: file 0..7 → x = OFF+file = -3.5..-3.5+7 = -3.5..3.5
+    //         rank 0..7 → z = OFF+(7-rank), rank=0 → z=3.5 (низ экрана), rank=7 → z=-3.5 (верх)
+    // Игрок смотрит снизу (z > 0), значит:
+    //   "Низ доски" (ближний край) = z = OFF + 8*SQ + gap = 4.5+gap  (rank 1)
+    //   "Верх доски" (дальний край) = z = OFF - gap = -4.5-gap        (rank 8)
+    //   "Левый борт" = x = OFF - gap = -4.5-gap                       (file a)
+    //   "Правый борт" = x = OFF + 8*SQ + gap = 4.5+gap                (file h)
 
-    // Буквы ТОЛЬКО сверху и снизу (как на классической доске)
-    FILES.forEach((letter, i) => {
+    const Y   = 0.10;   // высота над доской
+    const GAP = 0.62;   // расстояние от края клеток до метки
+
+    // ── БУКВЫ снизу (rank-1 row) ─────────────────────────────────────
+    // file 0=a слева, file 7=h справа — смотрим снизу
+    const FILES_FWD  = ['A','B','C','D','E','F','G','H']; // снизу a→h слева→направо
+    const FILES_BACK = ['H','G','F','E','D','C','B','A']; // сверху зеркально
+
+    FILES_FWD.forEach((letter, i) => {
       const x = OFF + i * SQ;
-
-      // Снизу (перед rank 1) — буква читается нормально
-      const lb = _makeLabel(letter);
-      lb.position.set(x, Y, OFF + 8*SQ + 0.55);
-      boardGroup.add(lb);
-
-      // Сверху (за rank 8) — буква перевёрнута для вида с другой стороны
-      const lt = _makeLabel(letter);
-      lt.rotation.x = -Math.PI / 2;
-      lt.rotation.z = Math.PI; // перевёрнута
-      lt.position.set(x, Y, OFF - 0.55);
-      boardGroup.add(lt);
+      const m = _makeLabel(letter);
+      m.position.set(x, Y, OFF + 8*SQ + GAP);
+      boardGroup.add(m);
     });
 
-    // Цифры ТОЛЬКО по бокам (слева и справа)
-    for (let r = 0; r < 8; r++) {
-      const z = OFF + r * SQ; // rank 1 внизу
-      const num = String(r + 1);
+    // ── БУКВЫ сверху (rank+8 row) ─────────────────────────────────────
+    FILES_BACK.forEach((letter, i) => {
+      const x = OFF + i * SQ;
+      const m = _makeLabel(letter);
+      m.position.set(x, Y, OFF - GAP);
+      boardGroup.add(m);
+    });
 
-      // Слева
-      const ll = _makeLabel(num);
-      ll.position.set(OFF - 0.55, Y, z);
-      boardGroup.add(ll);
+    // ── ЦИФРЫ слева ───────────────────────────────────────────────────
+    // rank 1 внизу (z большой), rank 8 вверху (z маленький)
+    for (let rank = 1; rank <= 8; rank++) {
+      const z = OFF + (8 - rank) * SQ; // rank1→z=3.5, rank8→z=-3.5
+      const m = _makeLabel(String(rank));
+      m.position.set(OFF - GAP, Y, z);
+      boardGroup.add(m);
+    }
 
-      // Справа
-      const lr = _makeLabel(num);
-      lr.rotation.x = -Math.PI / 2;
-      lr.rotation.z = Math.PI;
-      lr.position.set(OFF + 8*SQ + 0.55, Y, z);
-      boardGroup.add(lr);
+    // ── ЦИФРЫ справа ──────────────────────────────────────────────────
+    for (let rank = 1; rank <= 8; rank++) {
+      const z = OFF + (8 - rank) * SQ;
+      const m = _makeLabel(String(rank));
+      m.position.set(OFF + 8*SQ + GAP, Y, z);
+      boardGroup.add(m);
     }
   }
 
