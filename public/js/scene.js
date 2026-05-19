@@ -197,70 +197,78 @@ const Scene3D = (() => {
   }
 
   function _makeLabel(text) {
+    const sz = 256;
     const c = document.createElement('canvas');
-    c.width = 128; c.height = 128;
+    c.width = sz; c.height = sz;
     const ctx = c.getContext('2d');
-    ctx.clearRect(0,0,128,128);
-    ctx.fillStyle = 'rgba(220,175,90,0.95)';
-    ctx.font = 'bold 60px Georgia,serif';
+    ctx.clearRect(0, 0, sz, sz);
+    // Тень для читаемости
+    ctx.shadowColor = 'rgba(0,0,0,0.6)';
+    ctx.shadowBlur = 8;
+    // Цвет — золотистый, хорошо виден на дереве
+    ctx.fillStyle = '#d4a840';
+    ctx.font = 'bold 140px Georgia, serif';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-    ctx.fillText(text, 64, 66);
+    ctx.fillText(text, sz/2, sz/2 + 6);
     const tex = new THREE.CanvasTexture(c);
-    const mat = new THREE.MeshBasicMaterial({ map:tex, transparent:true, depthWrite:false, side:THREE.DoubleSide });
-    const mesh = new THREE.Mesh(new THREE.PlaneGeometry(0.55, 0.55), mat);
-    // Лежит плашмя — rotation управляется снаружи
+    tex.needsUpdate = true;
+    const mat = new THREE.MeshBasicMaterial({
+      map: tex, transparent: true, depthWrite: false, side: THREE.DoubleSide
+    });
+    const mesh = new THREE.Mesh(new THREE.PlaneGeometry(0.52, 0.52), mat);
     mesh.rotation.x = -Math.PI / 2;
     return mesh;
   }
 
   function _buildCoords() {
-    // OFF = -3.5, SQ = 1.0
-    // Клетки: file 0..7 → x = OFF+file = -3.5..-3.5+7 = -3.5..3.5
-    //         rank 0..7 → z = OFF+(7-rank), rank=0 → z=3.5 (низ экрана), rank=7 → z=-3.5 (верх)
-    // Игрок смотрит снизу (z > 0), значит:
-    //   "Низ доски" (ближний край) = z = OFF + 8*SQ + gap = 4.5+gap  (rank 1)
-    //   "Верх доски" (дальний край) = z = OFF - gap = -4.5-gap        (rank 8)
-    //   "Левый борт" = x = OFF - gap = -4.5-gap                       (file a)
-    //   "Правый борт" = x = OFF + 8*SQ + gap = 4.5+gap                (file h)
+    // Система координат Three.js в нашей сцене:
+    // Игрок (белые) смотрит со стороны +Z
+    // file 0(a)..7(h): x = OFF+file*SQ = -3.5 .. +3.5  (a слева, h справа)
+    // rank 0(1)..7(8): z = OFF+(7-rank)*SQ (rank1 → z=+3.5 ближе к игроку, rank8 → z=-3.5 дальше)
 
-    const Y   = 0.10;   // высота над доской
-    const GAP = 0.62;   // расстояние от края клеток до метки
+    const Y   = 0.10;
+    const GAP = 0.60;
+    // Файлы a=0 .. h=7, x = OFF + file*SQ
+    // С точки зрения белого игрока (смотрит с +Z):
+    //   снизу: a(слева) → h(справа)  т.е. file 0→7, x от -3.5 до +3.5
+    //   сверху: тоже a(слева)→h(справа) — одинаково
 
-    // ── БУКВЫ снизу (rank-1 row) ─────────────────────────────────────
-    // file 0=a слева, file 7=h справа — смотрим снизу
-    const FILES_FWD  = ['A','B','C','D','E','F','G','H']; // снизу a→h слева→направо
-    const FILES_BACK = ['H','G','F','E','D','C','B','A']; // сверху зеркально
+    const FILES = ['A','B','C','D','E','F','G','H'];
 
-    FILES_FWD.forEach((letter, i) => {
-      const x = OFF + i * SQ;
+    // БУКВЫ СНИЗУ — вдоль ближнего края (rank 1, z = OFF+(7-0)*SQ = +3.5)
+    // Позиция: z = +3.5 + GAP
+    FILES.forEach((letter, file) => {
       const m = _makeLabel(letter);
-      m.position.set(x, Y, OFF + 8*SQ + GAP);
+      m.position.set(OFF + file * SQ, Y, 3.5 + GAP);
       boardGroup.add(m);
     });
 
-    // ── БУКВЫ сверху (rank+8 row) ─────────────────────────────────────
-    FILES_BACK.forEach((letter, i) => {
-      const x = OFF + i * SQ;
+    // БУКВЫ СВЕРХУ — вдоль дальнего края (rank 8, z = OFF+(7-7)*SQ = -3.5)
+    // Повёрнуты на 180° вокруг Y чтобы читались правильно при взгляде сверху
+    FILES.forEach((letter, file) => {
       const m = _makeLabel(letter);
-      m.position.set(x, Y, OFF - GAP);
+      m.position.set(OFF + file * SQ, Y, -3.5 - GAP);
+      // Поворот на 180° по Y — текст читается с обратной стороны нормально
+      m.rotation.z = Math.PI;
       boardGroup.add(m);
     });
 
-    // ── ЦИФРЫ слева ───────────────────────────────────────────────────
-    // rank 1 внизу (z большой), rank 8 вверху (z маленький)
+    // ЦИФРЫ СЛЕВА — вдоль левого края (file a, x = -3.5)
+    // rank 1 ближе к игроку (z=+3.5), rank 8 дальше (z=-3.5)
     for (let rank = 1; rank <= 8; rank++) {
-      const z = OFF + (8 - rank) * SQ; // rank1→z=3.5, rank8→z=-3.5
+      const z = OFF + (8 - rank) * SQ; // rank1→+3.5, rank8→-3.5
       const m = _makeLabel(String(rank));
-      m.position.set(OFF - GAP, Y, z);
+      m.position.set(-3.5 - GAP, Y, z);
       boardGroup.add(m);
     }
 
-    // ── ЦИФРЫ справа ──────────────────────────────────────────────────
+    // ЦИФРЫ СПРАВА — вдоль правого края (file h, x = +3.5)
     for (let rank = 1; rank <= 8; rank++) {
       const z = OFF + (8 - rank) * SQ;
       const m = _makeLabel(String(rank));
-      m.position.set(OFF + 8*SQ + GAP, Y, z);
+      m.rotation.z = Math.PI; // зеркально для правой стороны
+      m.position.set(3.5 + GAP, Y, z);
       boardGroup.add(m);
     }
   }
