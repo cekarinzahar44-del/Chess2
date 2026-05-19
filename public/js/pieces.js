@@ -7,11 +7,11 @@ const PieceFactory = (() => {
 
   function _mats() {
     if (wMat) return;
-    // Белые — чистый слоновый цвет, чёткий
+    // Белые — тёмный кремово-бежевый, контрастен на светлых клетках
     wMat = new THREE.MeshStandardMaterial({
-      color: 0xf5ead0,
-      roughness: 0.15,
-      metalness: 0.05,
+      color: 0xc8a878,   // тёплый коричнево-бежевый
+      roughness: 0.20,
+      metalness: 0.04,
     });
     // Чёрные — насыщенный тёмно-коричневый
     bMat = new THREE.MeshStandardMaterial({
