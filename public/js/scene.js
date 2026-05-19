@@ -198,80 +198,71 @@ const Scene3D = (() => {
 
   function _makeLabel(text) {
     const sz = 256;
-    const c = document.createElement('canvas');
-    c.width = sz; c.height = sz;
-    const ctx = c.getContext('2d');
+    const cv = document.createElement('canvas');
+    cv.width = sz; cv.height = sz;
+    const ctx = cv.getContext('2d');
     ctx.clearRect(0, 0, sz, sz);
-    // Тень для читаемости
-    ctx.shadowColor = 'rgba(0,0,0,0.6)';
-    ctx.shadowBlur = 8;
-    // Цвет — золотистый, хорошо виден на дереве
-    ctx.fillStyle = '#d4a840';
-    ctx.font = 'bold 140px Georgia, serif';
+    ctx.fillStyle = 'rgba(200, 160, 70, 0.88)';
+    ctx.font = 'bold 148px Georgia, serif';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-    ctx.fillText(text, sz/2, sz/2 + 6);
-    const tex = new THREE.CanvasTexture(c);
+    ctx.fillText(text, sz/2, sz/2 + 8);
+    const tex = new THREE.CanvasTexture(cv);
     tex.needsUpdate = true;
     const mat = new THREE.MeshBasicMaterial({
       map: tex, transparent: true, depthWrite: false, side: THREE.DoubleSide
     });
-    const mesh = new THREE.Mesh(new THREE.PlaneGeometry(0.52, 0.52), mat);
+    const mesh = new THREE.Mesh(new THREE.PlaneGeometry(0.50, 0.50), mat);
     mesh.rotation.x = -Math.PI / 2;
     return mesh;
   }
 
   function _buildCoords() {
-    // Система координат Three.js в нашей сцене:
-    // Игрок (белые) смотрит со стороны +Z
-    // file 0(a)..7(h): x = OFF+file*SQ = -3.5 .. +3.5  (a слева, h справа)
-    // rank 0(1)..7(8): z = OFF+(7-rank)*SQ (rank1 → z=+3.5 ближе к игроку, rank8 → z=-3.5 дальше)
-
-    const Y   = 0.10;
-    const GAP = 0.60;
-    // Файлы a=0 .. h=7, x = OFF + file*SQ
-    // С точки зрения белого игрока (смотрит с +Z):
-    //   снизу: a(слева) → h(справа)  т.е. file 0→7, x от -3.5 до +3.5
-    //   сверху: тоже a(слева)→h(справа) — одинаково
+    // Координаты шахматной доски
+    // THREE.js: file a=0 → x=-3.5, file h=7 → x=+3.5
+    //           rank 1 → z=+3.5 (ближний к игроку), rank 8 → z=-3.5 (дальний)
+    const Y   = 0.11;   // высота над поверхностью
+    const GAP = 0.58;   // отступ от края клеток
 
     const FILES = ['A','B','C','D','E','F','G','H'];
 
-    // БУКВЫ СНИЗУ — вдоль ближнего края (rank 1, z = OFF+(7-0)*SQ = +3.5)
-    // Позиция: z = +3.5 + GAP
-    FILES.forEach((letter, file) => {
+    // ── БУКВЫ СНИЗУ (A–H) — ближний край, z = +3.5 + GAP ────────────
+    FILES.forEach((letter, i) => {
       const m = _makeLabel(letter);
-      m.position.set(OFF + file * SQ, Y, 3.5 + GAP);
+      m.position.set(-3.5 + i, Y, 3.5 + GAP);
       boardGroup.add(m);
     });
 
-    // БУКВЫ СВЕРХУ — вдоль дальнего края (rank 8, z = OFF+(7-7)*SQ = -3.5)
-    // Повёрнуты на 180° вокруг Y чтобы читались правильно при взгляде сверху
-    FILES.forEach((letter, file) => {
+    // ── БУКВЫ СВЕРХУ (A–H) — дальний край, z = -3.5 - GAP ───────────
+    // Поворот 180° чтоб читались со стороны белых
+    FILES.forEach((letter, i) => {
       const m = _makeLabel(letter);
-      m.position.set(OFF + file * SQ, Y, -3.5 - GAP);
-      // Поворот на 180° по Y — текст читается с обратной стороны нормально
+      m.rotation.x = -Math.PI / 2;
       m.rotation.z = Math.PI;
+      m.position.set(-3.5 + i, Y, -3.5 - GAP);
       boardGroup.add(m);
     });
 
-    // ЦИФРЫ СЛЕВА — вдоль левого края (file a, x = -3.5)
-    // rank 1 ближе к игроку (z=+3.5), rank 8 дальше (z=-3.5)
+    // ── ЦИФРЫ СЛЕВА (1–8) — x = -3.5 - GAP ──────────────────────────
+    // rank 1 внизу (z=+3.5), rank 8 вверху (z=-3.5)
     for (let rank = 1; rank <= 8; rank++) {
-      const z = OFF + (8 - rank) * SQ; // rank1→+3.5, rank8→-3.5
+      const z = 3.5 - (rank - 1);   // rank1→+3.5, rank2→+2.5 ... rank8→-3.5
       const m = _makeLabel(String(rank));
       m.position.set(-3.5 - GAP, Y, z);
       boardGroup.add(m);
     }
 
-    // ЦИФРЫ СПРАВА — вдоль правого края (file h, x = +3.5)
+    // ── ЦИФРЫ СПРАВА (1–8) — x = +3.5 + GAP ─────────────────────────
     for (let rank = 1; rank <= 8; rank++) {
-      const z = OFF + (8 - rank) * SQ;
+      const z = 3.5 - (rank - 1);
       const m = _makeLabel(String(rank));
-      m.rotation.z = Math.PI; // зеркально для правой стороны
+      m.rotation.x = -Math.PI / 2;
+      m.rotation.z = Math.PI;
       m.position.set(3.5 + GAP, Y, z);
       boardGroup.add(m);
     }
   }
+
 
   function _buildLegGeo() {
     // Lathe for turned wood leg
