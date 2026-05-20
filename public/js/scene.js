@@ -147,7 +147,7 @@ const Scene3D = (() => {
 
     // Яркий золотой текст
     ctx.fillStyle = '#e8c060';
-    ctx.font = 'bold 144px Georgia, serif';
+    ctx.font = 'bold 130px Georgia, serif';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
     ctx.fillText(text, sz/2, sz/2 + 8);
@@ -157,29 +157,24 @@ const Scene3D = (() => {
     const mat = new THREE.MeshBasicMaterial({
       map: tex, transparent: true, depthWrite: false, side: THREE.DoubleSide
     });
-    const mesh = new THREE.Mesh(new THREE.PlaneGeometry(0.54, 0.54), mat);
+    const mesh = new THREE.Mesh(new THREE.PlaneGeometry(0.46, 0.46), mat);
     mesh.rotation.x = -Math.PI / 2;
     return mesh;
   }
 
   function _buildCoords() {
-    // Координаты шахматной доски
-    // THREE.js: file a=0 → x=-3.5, file h=7 → x=+3.5
-    //           rank 1 → z=+3.5 (ближний к игроку), rank 8 → z=-3.5 (дальний)
-    const Y   = 0.11;   // высота над поверхностью
-    const GAP = 0.58;   // отступ от края клеток
-
+    const Y   = 0.11;
+    const GAP = 0.82;  // дальше от края — полностью в рамке
     const FILES = ['A','B','C','D','E','F','G','H'];
 
-    // ── БУКВЫ СНИЗУ (A–H) — ближний край, z = +3.5 + GAP ────────────
+    // Буквы снизу
     FILES.forEach((letter, i) => {
       const m = _makeLabel(letter);
       m.position.set(-3.5 + i, Y, 3.5 + GAP);
       boardGroup.add(m);
     });
 
-    // ── БУКВЫ СВЕРХУ (A–H) — дальний край, z = -3.5 - GAP ───────────
-    // Поворот 180° чтоб читались со стороны белых
+    // Буквы сверху (зеркально)
     FILES.forEach((letter, i) => {
       const m = _makeLabel(letter);
       m.rotation.x = -Math.PI / 2;
@@ -188,16 +183,15 @@ const Scene3D = (() => {
       boardGroup.add(m);
     });
 
-    // ── ЦИФРЫ СЛЕВА (1–8) — x = -3.5 - GAP ──────────────────────────
-    // rank 1 внизу (z=+3.5), rank 8 вверху (z=-3.5)
+    // Цифры слева
     for (let rank = 1; rank <= 8; rank++) {
-      const z = 3.5 - (rank - 1);   // rank1→+3.5, rank2→+2.5 ... rank8→-3.5
+      const z = 3.5 - (rank - 1);
       const m = _makeLabel(String(rank));
       m.position.set(-3.5 - GAP, Y, z);
       boardGroup.add(m);
     }
 
-    // ── ЦИФРЫ СПРАВА (1–8) — x = +3.5 + GAP ─────────────────────────
+    // Цифры справа (зеркально)
     for (let rank = 1; rank <= 8; rank++) {
       const z = 3.5 - (rank - 1);
       const m = _makeLabel(String(rank));
